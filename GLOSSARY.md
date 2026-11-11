@@ -100,5 +100,5 @@ A message Cadence gives a person about something that happened that concerns the
 _Avoid_: Alert, Message
 
 **Announcement**:
-A Notification an Instructor writes for the Students enrolled on one of their courses, as opposed to one Cadence sends when something happens.
+A message an Instructor posts on one of their courses for its Students. It belongs to the course, so a Student who enrols later can still read it. Posting one sends a Notification to the Students enrolled at that moment.
 _Avoid_: Broadcast, Post, Update
