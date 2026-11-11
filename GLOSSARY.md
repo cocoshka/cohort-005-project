@@ -1,6 +1,6 @@
 # Cadence
 
-Cadence sells video courses to students. This glossary covers the language around buying, taking and refunding courses.
+Cadence sells video courses to students. This glossary covers the language around buying, taking and refunding courses, and keeping people informed about them.
 
 ## Language
 
@@ -92,3 +92,13 @@ A Refund where the money couldn't be sent. The Refund Request stays approved, be
 **Watch Limit**:
 The amount of Watched time on a course past which a Student can no longer get a Refund, because they've had the course.
 _Avoid_: Watch cap, Viewing threshold
+
+### Notifications
+
+**Notification**:
+A message Cadence gives a person about something that happened that concerns them. Any person can receive one: a Student, Instructor, Team Admin or Platform Admin.
+_Avoid_: Alert, Message
+
+**Announcement**:
+A Notification an Instructor writes for the Students enrolled on one of their courses, as opposed to one Cadence sends when something happens.
+_Avoid_: Broadcast, Post, Update
