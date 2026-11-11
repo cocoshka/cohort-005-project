@@ -165,8 +165,7 @@ export function SettingsSoundCard() {
               {LABEL}
             </label>
             <p className="mt-1 text-xs text-muted-foreground">
-              A short chime while Cadence is open in a visible tab. Applies on every device you
-              sign in on.
+              A short chime while Cadence is open in a visible tab.
             </p>
             <button
               onClick={playChime}
