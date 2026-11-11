@@ -1,4 +1,13 @@
 import { Outlet } from "react-router";
+// PROTOTYPE imports (notifications inbox)
+import {
+  NotificationsPrototypeProvider,
+  useProtoNotifications,
+} from "~/components/notifications-prototype/state";
+import { NotificationsSwitcherBar } from "~/components/notifications-prototype/switcher-bar";
+import { VariantABell } from "~/components/notifications-prototype/variant-a";
+import { VariantBNavItem, VariantBToaster } from "~/components/notifications-prototype/variant-b";
+import { VariantCTopBar } from "~/components/notifications-prototype/variant-c";
 import type { Route } from "./+types/layout.app";
 import { Sidebar } from "~/components/sidebar";
 import { DevUI } from "~/components/dev-ui";
@@ -198,7 +207,30 @@ export async function loader({ request }: Route.LoaderArgs) {
       })
     : [];
 
+  // PROTOTYPE: real names/course/lesson so the fake Notifications look real.
+  const protoCourse = db
+    .select({ id: courses.id, slug: courses.slug, title: courses.title })
+    .from(courses)
+    .where(eq(courses.status, "published" as never))
+    .get() ?? db.select({ id: courses.id, slug: courses.slug, title: courses.title }).from(courses).get();
+  const protoLesson = protoCourse
+    ? db
+        .select({ id: lessons.id, title: lessons.title })
+        .from(lessons)
+        .innerJoin(modules, eq(lessons.moduleId, modules.id))
+        .where(eq(modules.courseId, protoCourse.id))
+        .get()
+    : undefined;
+  const notificationSeed = {
+    role: (currentUser?.role ?? "student") as "student" | "instructor" | "admin",
+    isTeamAdmin: currentUserId ? isTeamAdmin(currentUserId) : false,
+    course: protoCourse ? { slug: protoCourse.slug, title: protoCourse.title } : null,
+    lesson: protoLesson ?? null,
+    names: users.filter((u) => u.id !== currentUserId).map((u) => u.name).slice(0, 8),
+  };
+
   return {
+    notificationSeed,
     users: users.map((u) => ({ id: u.id, name: u.name, role: u.role })),
     currentUser: currentUser
       ? {
@@ -216,7 +248,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-export default function AppLayout({ loaderData }: Route.ComponentProps) {
+export default function AppLayout(props: Route.ComponentProps) {
+  return (
+    <NotificationsPrototypeProvider seed={props.loaderData.notificationSeed}>
+      <AppLayoutInner {...props} />
+    </NotificationsPrototypeProvider>
+  );
+}
+
+function AppLayoutInner({ loaderData }: Route.ComponentProps) {
+  const { variant } = useProtoNotifications(); // PROTOTYPE
   const {
     users,
     currentUser,
@@ -233,10 +274,15 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
         currentUser={currentUser}
         recentCourses={recentCourses}
         isTeamAdmin={userIsTeamAdmin}
+        headerSlot={currentUser && variant === "A" ? <VariantABell /> : null}
+        navTopSlot={currentUser && variant === "B" ? <VariantBNavItem /> : null}
       />
       <main className="flex-1 overflow-y-auto">
+        {currentUser && variant === "C" && <VariantCTopBar />}
         <Outlet />
       </main>
+      {currentUser && variant === "B" && <VariantBToaster />}
+      {currentUser && <NotificationsSwitcherBar />}
       <DevUI
         users={users}
         currentUser={currentUser}
