@@ -252,7 +252,7 @@ export function buildSeed(seed: SeedData, now = Date.now()): ProtoNotification[]
 
 /** A fresh Notification for the "Simulate arrival" button. */
 export function randomArrival(seed: SeedData, now = Date.now()): ProtoNotification {
-  const pool = buildSeed(seed, now).filter((x) => x.scope !== "everyone");
+  const pool = buildSeed(seed, now).filter((x) => x.kind !== "announcement");
   const pick = pool[Math.floor(Math.random() * pool.length)];
   return { ...pick, id: nid(), createdAt: now, seenAt: null, readAt: null };
 }

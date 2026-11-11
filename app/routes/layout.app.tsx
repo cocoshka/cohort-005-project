@@ -4,10 +4,11 @@ import {
   NotificationsPrototypeProvider,
   useProtoNotifications,
 } from "~/components/notifications-prototype/state";
-import { NotificationsSwitcherBar } from "~/components/notifications-prototype/switcher-bar";
-import { VariantABell } from "~/components/notifications-prototype/variant-a";
-import { VariantBNavItem, VariantBToaster } from "~/components/notifications-prototype/variant-b";
-import { VariantCTopBar } from "~/components/notifications-prototype/variant-c";
+import {
+  SoundPrototypeProvider,
+  SoundSwitcherBar,
+} from "~/components/notifications-prototype/sound-switch";
+import { VariantBNavItem } from "~/components/notifications-prototype/variant-b";
 import type { Route } from "./+types/layout.app";
 import { Sidebar } from "~/components/sidebar";
 import { DevUI } from "~/components/dev-ui";
@@ -251,7 +252,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function AppLayout(props: Route.ComponentProps) {
   return (
     <NotificationsPrototypeProvider seed={props.loaderData.notificationSeed}>
-      <AppLayoutInner {...props} />
+      <SoundPrototypeProvider>
+        <AppLayoutInner {...props} />
+      </SoundPrototypeProvider>
     </NotificationsPrototypeProvider>
   );
 }
@@ -274,15 +277,12 @@ function AppLayoutInner({ loaderData }: Route.ComponentProps) {
         currentUser={currentUser}
         recentCourses={recentCourses}
         isTeamAdmin={userIsTeamAdmin}
-        headerSlot={currentUser && variant === "A" ? <VariantABell /> : null}
         navTopSlot={currentUser && variant === "B" ? <VariantBNavItem /> : null}
       />
       <main className="flex-1 overflow-y-auto">
-        {currentUser && variant === "C" && <VariantCTopBar />}
         <Outlet />
       </main>
-      {currentUser && variant === "B" && <VariantBToaster />}
-      {currentUser && <NotificationsSwitcherBar />}
+      {currentUser && <SoundSwitcherBar />}
       <DevUI
         users={users}
         currentUser={currentUser}

@@ -65,8 +65,9 @@ export function NotificationsPrototypeProvider({
     }
   }, [fromUrl]);
 
-  const variant: Variant =
-    fromUrl && VARIANTS.includes(fromUrl) ? fromUrl : stored;
+  // Inbox design is decided (variant B); locked for the sound-switch prototype.
+  const variant: Variant = "B";
+  void fromUrl; void stored;
 
   const setVariant = (v: Variant) => {
     sessionStorage.setItem(STORAGE_KEY, v);
@@ -82,7 +83,8 @@ export function NotificationsPrototypeProvider({
   const [empty, setEmpty] = useState(false);
   const [lastArrivalId, setLastArrivalId] = useState<string | null>(null);
 
-  const visible = empty ? [] : items;
+  // Announcements were dropped from the effort: hide them.
+  const visible = empty ? [] : items.filter((x) => x.kind !== "announcement");
 
   const value = useMemo<Ctx>(() => {
     const now = () => Date.now();

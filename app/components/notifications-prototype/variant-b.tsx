@@ -16,6 +16,7 @@ import { cn } from "~/lib/utils";
 import { useProtoNotifications } from "./state";
 import { dayBucket, KIND_LABEL, timeAgo, type ProtoNotification } from "./data";
 import { KindIcon } from "./shared";
+import { InboxSoundControl } from "./sound-switch"; // PROTOTYPE sound switch
 
 const INBOX_PATH = "/prototype/inbox";
 
@@ -100,7 +101,7 @@ export function VariantBInboxPage({ openId }: { openId: string | null }) {
       <div className="flex items-center gap-4 border-b px-6 py-4">
         <h1 className="text-2xl font-bold">Inbox</h1>
         <div className="flex rounded-md bg-muted p-0.5 text-sm">
-          {(["all", "unread", "announcements"] as Filter[]).map((f) => (
+          {(["all", "unread"] as Filter[]).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -114,10 +115,12 @@ export function VariantBInboxPage({ openId }: { openId: string | null }) {
             </button>
           ))}
         </div>
+        <div className="flex-1" />
+        <InboxSoundControl />
         <button
           onClick={markAllRead}
           disabled={unread === 0}
-          className="ml-auto text-sm font-medium text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+          className="text-sm font-medium text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
         >
           Mark all as read
         </button>
@@ -128,8 +131,7 @@ export function VariantBInboxPage({ openId }: { openId: string | null }) {
           <Inbox className="size-12 text-muted-foreground/40" />
           <div className="text-lg font-semibold">Your inbox is empty</div>
           <p className="max-w-sm text-sm text-muted-foreground">
-            When someone replies to your comment, a Refund Request is decided, or a course you
-            take posts an Announcement, it lands here.
+            When someone replies to your comment or a Refund Request is decided, it lands here.
           </p>
         </div>
       ) : (
