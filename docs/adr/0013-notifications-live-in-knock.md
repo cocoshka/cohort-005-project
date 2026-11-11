@@ -4,9 +4,8 @@ Cadence's in-app Notifications are stored and delivered live by Knock, a hosted 
 
 Knock carries only the in-app feed. Cadence still owns everything else:
 
-- **Email** goes through Postmark from `mailer.server.ts`. Knock never sends email.
-- **Preferences** are stored and checked by Cadence before it calls Knock. For example, Cadence doesn't send Knock a muted course's Announcements.
-- **Announcements** are stored on the course in Cadence. Knock only carries the Notification about one.
+- **Email** goes through Postmark from `mailer.server.ts`. Knock never sends email. Only refund emails are sent; other Notifications are in-app only.
+- **Preferences** are stored and checked by Cadence.
 
 ## Considered Options
 
@@ -22,4 +21,4 @@ Knock carries only the in-app feed. Cadence still owns everything else:
 - **Login:** a Cadence route signs a short-lived JWT (RS256) for the browser.
 - **Account deletion** must also delete the person from Knock.
 - **Dev and tests:** local dev uses a Knock Development environment key. Automated tests, and anyone without a key, use a local fake behind the same `notifier` interface.
-- **Cost:** Knock is free up to 10,000 messages a month, then $250 a month. Announcements to large courses use the quota fastest.
+- **Cost:** Knock is free up to 10,000 messages a month, then $250 a month.

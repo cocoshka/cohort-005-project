@@ -98,7 +98,3 @@ _Avoid_: Watch cap, Viewing threshold
 **Notification**:
 A message Cadence gives a person about something that happened that concerns them. Any person can receive one: a Student, Instructor, Team Admin or Platform Admin.
 _Avoid_: Alert, Message
-
-**Announcement**:
-A message posted either on one course, for its Students, or to everyone on Cadence. A course's Instructor or a Platform Admin can post on a course; only a Platform Admin can post to everyone. An Announcement stays readable after it's posted, so a Student who enrols later can read a course's Announcements and someone who joins later can read the ones to everyone. Posting one sends a Notification to the people it was for at that moment.
-_Avoid_: Broadcast, Post, Update
