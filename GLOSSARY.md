@@ -100,5 +100,5 @@ A message Cadence gives a person about something that happened that concerns the
 _Avoid_: Alert, Message
 
 **Announcement**:
-A message an Instructor posts on one of their courses for its Students. It belongs to the course, so a Student who enrols later can still read it. Posting one sends a Notification to the Students enrolled at that moment.
+A message posted either on one course, for its Students, or to everyone on Cadence. A course's Instructor or a Platform Admin can post on a course; only a Platform Admin can post to everyone. An Announcement stays readable after it's posted, so a Student who enrols later can read a course's Announcements and someone who joins later can read the ones to everyone. Posting one sends a Notification to the people it was for at that moment.
 _Avoid_: Broadcast, Post, Update
