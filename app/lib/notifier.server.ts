@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Knock from "@knocklabs/node";
 import { db as appDb, type Db } from "~/db";
+import type { NotificationKind } from "~/lib/notification-kind";
 import { idsWithNotificationsOff } from "~/lib/preferences.server";
 
 // ─── Notifications ───
@@ -39,7 +40,7 @@ export type NotificationData = {
 
 export type Notification = {
   /** Knock workflow key, e.g. "seat-claimed". */
-  workflow: string;
+  workflow: NotificationKind;
   /** Same key on every retry, so Knock never creates the Notification twice. */
   idempotencyKey: string;
   /** The person who acted. Never notified about their own action. */
@@ -51,7 +52,7 @@ export type Notification = {
 export type KnockRecipient = { id: string; name: string; email: string };
 
 export type NotifierTrigger = {
-  workflow: string;
+  workflow: NotificationKind;
   idempotencyKey: string;
   actor: KnockRecipient;
   recipients: KnockRecipient[];
