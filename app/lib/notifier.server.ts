@@ -1,12 +1,17 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Knock from "@knocklabs/node";
+import { db as appDb } from "~/db";
+import { idsWithNotificationsOff } from "~/lib/preferences.server";
+import type { Db } from "~/lib/refunds.server";
 
 // ─── Notifications ───
 // Knock stores and delivers the in-app feed (ADR 0013). Every kind goes
-// through `deliverNotification` (or `notifyInBackground` from a route), which
-// talks to a `Notifier`. Knock is used when KNOCK_API_KEY is set. Without a
-// key (tests, local dev without Knock) a fake is used instead.
+// through `sendNotification` (or `notifyInBackground` from a route), which
+// leaves out people with Inbox Notifications off and hands the rest to
+// `deliverNotification`, which talks to a `Notifier`. Knock is used when
+// KNOCK_API_KEY is set. Without a key (tests, local dev without Knock) a fake
+// is used instead.
 
 export type NotificationPerson = {
   id: number;
@@ -189,13 +194,52 @@ export async function deliverNotification(
 }
 
 /**
+ * Sends one Notification to everyone in it who has Inbox Notifications on.
+ * People who turned them off are left out of the trigger, so nothing is
+ * created for them (turning them back on doesn't bring it back). If nobody is
+ * left, Knock isn't called. Never throws.
+ */
+export async function sendNotification(
+  db: Db,
+  notification: Notification,
+  notifier: Notifier,
+  options: DeliveryOptions = {}
+): Promise<void> {
+  const logError = options.logError ?? ((...args) => console.error(...args));
+  let optedOut: Set<number>;
+  try {
+    optedOut = idsWithNotificationsOff(
+      db,
+      notification.recipients.map((person) => person.id)
+    );
+  } catch (error) {
+    logError(
+      `Dropped the ${notification.workflow} Notification (${notification.idempotencyKey}): could not read preferences:`,
+      error
+    );
+    return;
+  }
+  await deliverNotification(
+    {
+      ...notification,
+      recipients: notification.recipients.filter(
+        (person) => !optedOut.has(person.id)
+      ),
+    },
+    notifier,
+    options
+  );
+}
+
+/**
  * For routes: call after Cadence has saved its own change. Sends in the
  * background so the person's action never waits for, or fails because of,
  * Knock.
  */
 export function notifyInBackground(
   notification: Notification,
-  notifier: Notifier = defaultNotifier()
+  notifier: Notifier = defaultNotifier(),
+  db: Db = appDb
 ): void {
-  void deliverNotification(notification, notifier);
+  void sendNotification(db, notification, notifier);
 }

@@ -56,6 +56,22 @@ export const users = sqliteTable("users", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+// One row per user, created on first save. A missing row means every
+// preference is at its default (see app/lib/preferences.server.ts).
+export const userPreferences = sqliteTable("user_preferences", {
+  userId: integer("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  notificationsEnabled: integer("notifications_enabled", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  playNotificationSound: integer("play_notification_sound", {
+    mode: "boolean",
+  })
+    .notNull()
+    .default(true),
+});
+
 export const categories = sqliteTable("categories", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),

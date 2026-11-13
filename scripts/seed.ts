@@ -84,6 +84,7 @@ async function seed() {
     DROP TABLE IF EXISTS modules;
     DROP TABLE IF EXISTS courses;
     DROP TABLE IF EXISTS categories;
+    DROP TABLE IF EXISTS user_preferences;
     DROP TABLE IF EXISTS users;
     DROP TABLE IF EXISTS __drizzle_migrations;
   `);
@@ -2823,10 +2824,24 @@ This course is still in draft while the cluster examples are rewritten against t
     (Date.now() - Date.parse(oldestPurchase)) / 86_400_000
   );
 
+  // ─── Notification preferences ───
+  // Rows are lazy: everyone without one has every preference on. Emma keeps
+  // her Inbox Notifications but has turned the sound off.
+
+  db.insert(schema.userPreferences)
+    .values({
+      userId: studentByEmail("emma.wilson@student.dev").id,
+      playNotificationSound: false,
+    })
+    .run();
+
+  console.log("Created 1 notification preference row (Emma: sound off).");
+
   console.log("\n✓ Seed complete!");
   console.log(
     `  Users: ${countRows(schema.users)} (${countRows(schema.users, eq(schema.users.role, UserRole.Admin))} admin, ${countRows(schema.users, eq(schema.users.role, UserRole.Instructor))} instructors, ${countRows(schema.users, eq(schema.users.role, UserRole.Student))} students)`
   );
+  console.log(`  User preferences: ${countRows(schema.userPreferences)}`);
   console.log(`  Categories: ${countRows(schema.categories)}`);
   console.log(
     `  Courses: ${countRows(schema.courses)} (${countRows(schema.courses, eq(schema.courses.status, CourseStatus.Published))} published, ${countRows(schema.courses, eq(schema.courses.status, CourseStatus.Draft))} draft)`

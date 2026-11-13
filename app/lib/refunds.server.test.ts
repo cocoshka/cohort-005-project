@@ -17,7 +17,12 @@ import {
   listTeamLicences,
   raiseRefundRequest,
 } from "./refunds.server";
-import { deliverNotification, recordingNotifier } from "./notifier.server";
+import { saveUserPreferences } from "./preferences.server";
+import {
+  deliverNotification,
+  recordingNotifier,
+  sendNotification,
+} from "./notifier.server";
 import { outboxTransport, sendEmail } from "./mailer.server";
 
 type TestDb = ReturnType<typeof createTestDb>;
@@ -486,6 +491,20 @@ describe("approving a Refund Request", () => {
     expect(result.email.to).toBe("test@example.com");
     expect(result.email.subject).toBe("Refund approved — Test Course");
     expect(result.email.body).toContain("$79.00");
+  });
+
+  it("emails, but doesn't notify, a buyer who turned Inbox Notifications off", async () => {
+    saveUserPreferences(db, base.user.id, { notificationsEnabled: false });
+    const purchase = buyForSelf(base.user.id);
+    const id = raise(purchase.id, base.user.id);
+    const notifier = recordingNotifier();
+
+    const result = approveRefundRequest(db, id, platformAdmin.id, null, NOW);
+    if (!result.ok) throw new Error(result.error);
+    await sendNotification(db, result.notification, notifier);
+
+    expect(result.email.to).toBe("test@example.com");
+    expect(notifier.triggers).toEqual([]);
   });
 });
 
