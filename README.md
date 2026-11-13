@@ -81,7 +81,7 @@ It needs to be public: GitHub Actions minutes are free on public repos, and the 
 
 You don't need these yet, but you'll be asked for them along the way. Both have a free option:
 
-- **[Knock](https://knock.app/)**, a free Developer account, when you build notifications. Its keys go in `.env`, which is gitignored: `KNOCK_API_KEY` (secret `sk_…`), `KNOCK_SIGNING_KEY` (RS256 signing key, base64), `KNOCK_PUBLIC_API_KEY` (`pk_…`) and `KNOCK_FEED_CHANNEL_ID` (the in-app feed channel). Turn on enhanced security mode and create a `seat-claimed` workflow with an in-app feed step. Without `KNOCK_API_KEY`, Notifications are written to `.notifications/` instead.
+- **[Knock](https://knock.app/)**, a free Developer account, when you build notifications. Its keys go in `.env`, which is gitignored: `KNOCK_API_KEY` (secret `sk_…`), `KNOCK_SIGNING_KEY` (RS256 signing key, base64), `KNOCK_PUBLIC_API_KEY` (`pk_…`) and `KNOCK_FEED_CHANNEL_ID` (the in-app feed channel). Turn on enhanced security mode and create these workflows, each with an in-app feed step and "Override recipient preferences" off: `seat-claimed`, `new-refund-request`, `refund-request-decided`, `new-question` and `new-reply`. Without `KNOCK_API_KEY`, Notifications are written to `.notifications/` instead.
 - **[tldraw](https://www.tldraw.com/)**, for whiteboarding your tasks. Any drawing app will do.
 
 ## Scripts

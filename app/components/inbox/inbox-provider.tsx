@@ -1,10 +1,19 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   KnockFeedProvider,
   KnockProvider,
   useKnockFeed,
 } from "@knocklabs/react";
 import { z } from "zod";
+import { loadEveryPage } from "~/lib/inbox";
 
 // Knock's own types, taken from @knocklabs/react so Cadence doesn't depend on
 // @knocklabs/client directly.
@@ -48,6 +57,13 @@ export type InboxState = {
   /** Knock's *read* state, not *seen*. */
   unreadCount: number;
   feedClient: Feed | null;
+  /**
+   * Marks a Notification unread. Use this, not `feedClient.markAsUnread`, so
+   * the sound knows the rise in the unread count is the person's own.
+   */
+  markAsUnread: (item: InboxItem) => void;
+  /** How many Notifications the person has marked unread themselves so far. */
+  markedUnread: () => number;
 };
 
 const disabledInbox: InboxState = {
@@ -56,6 +72,8 @@ const disabledInbox: InboxState = {
   items: [],
   unreadCount: 0,
   feedClient: null,
+  markAsUnread: () => {},
+  markedUnread: () => 0,
 };
 
 const InboxContext = createContext<InboxState>(disabledInbox);
@@ -160,13 +178,28 @@ function KnockInboxState({ children }: { children: React.ReactNode }) {
   const feedItems = useFeedStore((state) => state.items);
   const unreadCount = useFeedStore((state) => state.metadata.unread_count);
   const loading = useFeedStore((state) => state.loading);
+  // A ref, not state: it must count the mark before Knock's optimistic update
+  // raises the unread count, so the sound sees both together.
+  const markedUnreadRef = useRef(0);
+  const markAsUnread = useCallback(
+    (item: InboxItem) => {
+      if (item.readAt === null) return;
+      markedUnreadRef.current += 1;
+      void feedClient.markAsUnread(item.feedItem);
+    },
+    [feedClient]
+  );
+  const markedUnread = useCallback(() => markedUnreadRef.current, []);
 
   useEffect(() => {
-    // The feed listens for live updates on its own but doesn't load the
-    // first page. Reload when a hidden tab is shown, so it catches up.
-    void feedClient.fetch();
+    // The feed listens for live updates on its own but doesn't load any
+    // pages. Load them all, and again when a hidden tab is shown, so it
+    // catches up.
+    void loadEveryPage(feedClient);
     function onVisibilityChange() {
-      if (document.visibilityState === "visible") void feedClient.fetch();
+      if (document.visibilityState === "visible") {
+        void loadEveryPage(feedClient);
+      }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () =>
@@ -178,8 +211,16 @@ function KnockInboxState({ children }: { children: React.ReactNode }) {
       .map(toInboxItem)
       .filter((item): item is InboxItem => item !== null)
       .sort((a, b) => b.insertedAt.localeCompare(a.insertedAt));
-    return { enabled: true, loading, items, unreadCount, feedClient };
-  }, [feedItems, loading, unreadCount, feedClient]);
+    return {
+      enabled: true,
+      loading,
+      items,
+      unreadCount,
+      feedClient,
+      markAsUnread,
+      markedUnread,
+    };
+  }, [feedItems, loading, unreadCount, feedClient, markAsUnread, markedUnread]);
 
   return (
     <InboxContext.Provider value={value}>{children}</InboxContext.Provider>

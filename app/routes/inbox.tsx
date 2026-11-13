@@ -52,7 +52,8 @@ function timeAgo(insertedAt: string, now: Date): string {
 export default function InboxPage() {
   // Opening the page marks nothing: only reading a Notification lowers the
   // unread count.
-  const { enabled, loading, items, unreadCount, feedClient } = useInbox();
+  const { enabled, loading, items, unreadCount, feedClient, markAsUnread } =
+    useInbox();
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -70,7 +71,7 @@ export default function InboxPage() {
 
   function toggleRead(item: InboxItem) {
     if (item.readAt === null) void feedClient?.markAsRead(item.feedItem);
-    else void feedClient?.markAsUnread(item.feedItem);
+    else markAsUnread(item);
   }
 
   return (

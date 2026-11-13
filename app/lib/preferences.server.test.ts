@@ -80,8 +80,8 @@ function someNotification(
   recipients: (typeof schema.users.$inferSelect)[]
 ): Notification {
   return {
-    workflow: "any-kind",
-    idempotencyKey: "any-kind:1",
+    workflow: "seat-claimed",
+    idempotencyKey: "seat-claimed:1",
     actor: notificationPerson(actor),
     recipients: recipients.map(notificationPerson),
     data: { title: "Something happened", url: "/", actionLabel: "Open" },

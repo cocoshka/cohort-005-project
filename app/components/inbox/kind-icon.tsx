@@ -6,10 +6,12 @@ import {
   ReceiptText,
   UserPlus,
 } from "lucide-react";
+import type { NotificationKind } from "~/lib/notification-kind";
 import { cn } from "~/lib/utils";
 
-// One look per Notification kind, keyed by the Knock workflow key. A kind
-// this list doesn't know yet still shows, as a plain "Notification".
+// One look per Notification kind, keyed by the Knock workflow key. A key read
+// back from Knock that isn't a NotificationKind still shows, as a plain
+// "Notification".
 
 type KindLook = {
   label: string;
@@ -17,7 +19,7 @@ type KindLook = {
   tint: string;
 };
 
-const KIND_LOOKS: Record<string, KindLook> = {
+const KIND_LOOKS: Record<NotificationKind, KindLook> = {
   "refund-request-decided": {
     label: "Refund Request decided",
     icon: ReceiptText,
@@ -51,8 +53,12 @@ const FALLBACK_LOOK: KindLook = {
   tint: "bg-muted text-muted-foreground",
 };
 
+function isNotificationKind(kind: string): kind is NotificationKind {
+  return Object.hasOwn(KIND_LOOKS, kind);
+}
+
 function lookFor(kind: string): KindLook {
-  return KIND_LOOKS[kind] ?? FALLBACK_LOOK;
+  return isNotificationKind(kind) ? KIND_LOOKS[kind] : FALLBACK_LOOK;
 }
 
 export function kindLabel(kind: string): string {

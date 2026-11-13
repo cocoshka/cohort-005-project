@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupInbox, inboxEmptyState } from "./inbox";
+import { groupInbox, inboxEmptyState, loadEveryPage } from "./inbox";
 
 // Thursday 12 November 2026, 15:00 local time.
 const NOW = new Date(2026, 10, 12, 15, 0, 0);
@@ -70,5 +70,49 @@ describe("inboxEmptyState", () => {
 
     expect(inboxEmptyState(items, "all")).toBeNull();
     expect(inboxEmptyState(items, "unread")).toBeNull();
+  });
+});
+
+/** A fake Knock feed: pages of ids, linked by `after` cursors. */
+function pagedFeed(pages: string[][]) {
+  let loaded: string[] = [];
+  let after: string | null = null;
+  const calls: Array<{ after?: string } | undefined> = [];
+  return {
+    calls,
+    loaded: () => loaded,
+    async fetch(options?: { after?: string }): Promise<unknown> {
+      calls.push(options);
+      const index = options?.after ? Number(options.after) : 0;
+      const page = pages[index] ?? [];
+      loaded = options?.after ? [...loaded, ...page] : page;
+      after = index + 1 < pages.length ? String(index + 1) : null;
+      return { status: "ok" };
+    },
+    getState() {
+      return { pageInfo: { after } };
+    },
+  };
+}
+
+describe("loadEveryPage", () => {
+  it("loads every page of Notifications, not just the first", async () => {
+    const feed = pagedFeed([["a", "b"], ["c", "d"], ["e"]]);
+
+    await loadEveryPage(feed);
+
+    expect(feed.loaded()).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("stops when Knock skips a fetch because one is already in flight", async () => {
+    const feed = pagedFeed([["a"], ["b"]]);
+    feed.fetch = async (options?: { after?: string }) => {
+      feed.calls.push(options);
+      return undefined;
+    };
+
+    await loadEveryPage(feed);
+
+    expect(feed.calls).toHaveLength(1);
   });
 });

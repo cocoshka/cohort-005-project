@@ -1,6 +1,7 @@
 import { and, count, eq, isNotNull } from "drizzle-orm";
 import { coupons, courses, enrollments, purchases, users } from "~/db/schema";
-import { getSeatAvailability, type Db } from "~/lib/refunds.server";
+import type { Db } from "~/db";
+import { getSeatAvailability } from "~/lib/refunds.server";
 import { notificationPerson, type Notification } from "~/lib/notifier.server";
 
 // ─── Seats ───

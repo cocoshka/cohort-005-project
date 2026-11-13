@@ -282,24 +282,6 @@ function NotificationsCard({
   notificationsEnabled: boolean;
   playNotificationSound: boolean;
 }) {
-  const fetcher = useFetcher<typeof action>();
-  const pending = fetcher.formData?.get("notificationsEnabled");
-  const checked =
-    typeof pending === "string" ? pending === "on" : notificationsEnabled;
-
-  useEffect(() => {
-    if (fetcher.state !== "idle" || !fetcher.data) return;
-    if ("notificationsEnabled" in fetcher.data) {
-      toast.success(
-        fetcher.data.notificationsEnabled
-          ? "Inbox notifications turned on."
-          : "Inbox notifications turned off."
-      );
-    } else if ("errors" in fetcher.data) {
-      toast.error("Couldn't save your notification settings.");
-    }
-  }, [fetcher.state, fetcher.data]);
-
   return (
     <Card id="notifications" className="mt-8 max-w-md scroll-mt-6">
       <CardHeader>
@@ -307,83 +289,121 @@ function NotificationsCard({
           <Bell className="size-4" /> Notifications
         </h2>
       </CardHeader>
-      <CardContent>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <Label htmlFor="notifications-enabled">Inbox notifications</Label>
-            <p className="mt-1 text-xs text-muted-foreground">
-              When this is off, nothing new reaches your Inbox. Refund emails
-              still arrive.
-            </p>
-          </div>
-          <Switch
-            id="notifications-enabled"
-            checked={checked}
-            onCheckedChange={(on) =>
-              fetcher.submit(
-                {
-                  intent: "notifications",
-                  notificationsEnabled: on ? "on" : "off",
-                },
-                { method: "post" }
-              )
-            }
-          />
-        </div>
+      <CardContent className="space-y-6">
+        <PreferenceSwitch
+          preference="notificationsEnabled"
+          value={notificationsEnabled}
+        >
+          <p className="mt-1 text-xs text-muted-foreground">
+            When this is off, nothing new reaches your Inbox. Refund emails
+            still arrive.
+          </p>
+        </PreferenceSwitch>
         {/* Stays usable when Inbox notifications are off: it keeps its own
             value either way. */}
-        <SoundSwitch playNotificationSound={playNotificationSound} />
+        <PreferenceSwitch
+          preference="playNotificationSound"
+          value={playNotificationSound}
+        >
+          <p className="mt-1 text-xs text-muted-foreground">
+            A short chime while Cadence is open in a visible tab.
+          </p>
+          <button
+            type="button"
+            onClick={playChime}
+            className="mt-2 text-xs font-medium text-primary hover:underline"
+          >
+            Play a test sound
+          </button>
+        </PreferenceSwitch>
       </CardContent>
     </Card>
   );
 }
 
-function SoundSwitch({
-  playNotificationSound,
+type Preference = "notificationsEnabled" | "playNotificationSound";
+
+const PREFERENCE_SWITCHES: Record<
+  Preference,
+  {
+    intent: "notifications" | "sound";
+    id: string;
+    label: string;
+    turnedOn: string;
+    turnedOff: string;
+    failed: string;
+  }
+> = {
+  notificationsEnabled: {
+    intent: "notifications",
+    id: "notifications-enabled",
+    label: "Inbox notifications",
+    turnedOn: "Inbox notifications turned on.",
+    turnedOff: "Inbox notifications turned off.",
+    failed: "Couldn't save your notification settings.",
+  },
+  playNotificationSound: {
+    intent: "sound",
+    id: "play-notification-sound",
+    label: "Play a sound for new Notifications",
+    turnedOn: "Notification sound turned on.",
+    turnedOff: "Notification sound turned off.",
+    failed: "Couldn't save your sound setting.",
+  },
+};
+
+/** What the action returns, as the switch reads it. */
+type ActionResult =
+  | { errors: Record<string, string> }
+  | ({ success: boolean } & Partial<Record<Preference, boolean>>);
+
+/** The value the action saved for this preference, if it saved this one. */
+function savedValue(
+  data: ActionResult,
+  preference: Preference
+): boolean | undefined {
+  return "errors" in data ? undefined : data[preference];
+}
+
+/** One on/off preference, saved as soon as it's switched. */
+function PreferenceSwitch({
+  preference,
+  value,
+  children,
 }: {
-  playNotificationSound: boolean;
+  preference: Preference;
+  value: boolean;
+  /** Shown under the label. */
+  children: React.ReactNode;
 }) {
+  const { intent, id, label, turnedOn, turnedOff, failed } =
+    PREFERENCE_SWITCHES[preference];
   const fetcher = useFetcher<typeof action>();
-  const pending = fetcher.formData?.get("playNotificationSound");
-  const checked =
-    typeof pending === "string" ? pending === "on" : playNotificationSound;
+  const pending = fetcher.formData?.get(preference);
+  const checked = typeof pending === "string" ? pending === "on" : value;
 
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
-    if ("playNotificationSound" in fetcher.data) {
-      toast.success(
-        fetcher.data.playNotificationSound
-          ? "Notification sound turned on."
-          : "Notification sound turned off."
-      );
+    const saved = savedValue(fetcher.data, preference);
+    if (saved !== undefined) {
+      toast.success(saved ? turnedOn : turnedOff);
     } else if ("errors" in fetcher.data) {
-      toast.error("Couldn't save your sound setting.");
+      toast.error(failed);
     }
-  }, [fetcher.state, fetcher.data]);
+  }, [fetcher.state, fetcher.data, preference, turnedOn, turnedOff, failed]);
 
   return (
-    <div className="mt-6 flex items-start justify-between gap-4">
+    <div className="flex items-start justify-between gap-4">
       <div>
-        <Label htmlFor="play-notification-sound">
-          Play a sound for new Notifications
-        </Label>
-        <p className="mt-1 text-xs text-muted-foreground">
-          A short chime while Cadence is open in a visible tab.
-        </p>
-        <button
-          type="button"
-          onClick={playChime}
-          className="mt-2 text-xs font-medium text-primary hover:underline"
-        >
-          Play a test sound
-        </button>
+        <Label htmlFor={id}>{label}</Label>
+        {children}
       </div>
       <Switch
-        id="play-notification-sound"
+        id={id}
         checked={checked}
         onCheckedChange={(on) =>
           fetcher.submit(
-            { intent: "sound", playNotificationSound: on ? "on" : "off" },
+            { intent, [preference]: on ? "on" : "off" },
             { method: "post" }
           )
         }

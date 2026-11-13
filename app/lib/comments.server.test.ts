@@ -103,6 +103,20 @@ describe("New Question", () => {
 
     expect(result.notification).toBeNull();
   });
+
+  it("another course's Instructor's top-level comment is not a New Question", async () => {
+    const otherInstructor = addPerson("Sam Lee", UserRole.Instructor);
+
+    const result = postComment(
+      db,
+      otherInstructor.id,
+      lesson.id,
+      null,
+      "Nice lesson"
+    );
+
+    expect(result.notification).toBeNull();
+  });
 });
 
 describe("New Reply", () => {

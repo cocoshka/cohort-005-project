@@ -70,3 +70,23 @@ export async function sendEmail(
 ): Promise<void> {
   await transport.send(email);
 }
+
+/**
+ * Sends each email on its own and logs any that fail instead of throwing, for
+ * emails that mustn't fail an action whose change is already saved.
+ */
+export async function sendEachEmail(
+  emails: Email[],
+  transport: MailTransport = defaultTransport(),
+  logError: (...args: unknown[]) => void = (...args) => console.error(...args)
+): Promise<void> {
+  await Promise.all(
+    emails.map(async (email) => {
+      try {
+        await transport.send(email);
+      } catch (error) {
+        logError(`Could not send "${email.subject}" to ${email.to}:`, error);
+      }
+    })
+  );
+}

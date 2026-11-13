@@ -66,3 +66,27 @@ export function inboxEmptyState(
 function passesFilter(item: Placeable, filter: InboxFilter): boolean {
   return filter === "all" || item.readAt === null;
 }
+
+/** The part of Knock's feed client that loading pages needs. */
+export type PagedFeed = {
+  /** Resolves to undefined when Knock skips the fetch (one is in flight). */
+  fetch(options?: { after?: string }): Promise<unknown>;
+  getState(): { pageInfo: { after: string | null } };
+};
+
+/**
+ * Loads the first page of the feed, then every older page, so the Inbox (and
+ * its Unread filter) has every past Notification. Knock pages the feed and
+ * a plain `fetch()` only brings the newest page.
+ */
+export async function loadEveryPage(feed: PagedFeed): Promise<void> {
+  if ((await feed.fetch()) === undefined) return;
+  let after = feed.getState().pageInfo.after;
+  while (after !== null) {
+    if ((await feed.fetch({ after })) === undefined) return;
+    const next = feed.getState().pageInfo.after;
+    // Guard against a cursor that doesn't move, so this always ends.
+    if (next === after) return;
+    after = next;
+  }
+}
