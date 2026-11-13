@@ -17,6 +17,7 @@ import {
   RefundStatus,
 } from "~/db/schema";
 import { formatPrice } from "~/lib/utils";
+import { notificationPerson, type Notification } from "~/lib/notifier.server";
 import {
   REFUND_COMPLETION_LIMIT,
   REFUND_WATCH_LIMIT_SECONDS,
@@ -568,7 +569,9 @@ export function listTeamLicences(db: Queryable, buyerId: number, now: Date) {
 
 // ─── Deciding a Refund Request ───
 
-export type DecisionResult = { ok: true; email: Email } | Failure;
+export type DecisionResult =
+  | { ok: true; email: Email; notification: Notification }
+  | Failure;
 
 function findOpenRefundRequest(
   tx: Queryable,
@@ -680,6 +683,14 @@ export function approveRefundRequest(
     return {
       ok: true,
       email: buildDecisionEmail(tx, purchase, RefundStatus.Approved, note),
+      notification: buildDecisionNotification(
+        tx,
+        refundRequestId,
+        purchase,
+        platformAdminId,
+        RefundStatus.Approved,
+        note
+      ),
     };
   });
 }
@@ -728,8 +739,67 @@ export function declineRefundRequest(
         RefundStatus.Declined,
         trimmedNote
       ),
+      notification: buildDecisionNotification(
+        tx,
+        refundRequestId,
+        found.purchase,
+        platformAdminId,
+        RefundStatus.Declined,
+        trimmedNote
+      ),
     };
   });
+}
+
+/**
+ * The Refund Request Decided Notification for the buyer's Inbox. The
+ * Platform Admin who decided is the actor, so they are never notified.
+ */
+function buildDecisionNotification(
+  db: Queryable,
+  refundRequestId: number,
+  purchase: Purchase,
+  platformAdminId: number,
+  decision: RefundStatus.Approved | RefundStatus.Declined,
+  note: string | null
+): Notification {
+  const buyer = db
+    .select()
+    .from(users)
+    .where(eq(users.id, purchase.userId))
+    .get();
+  const platformAdmin = db
+    .select()
+    .from(users)
+    .where(eq(users.id, platformAdminId))
+    .get();
+  const course = db
+    .select()
+    .from(courses)
+    .where(eq(courses.id, purchase.courseId))
+    .get();
+
+  return {
+    workflow: "refund-request-decided",
+    idempotencyKey: `refund-request-decided:${refundRequestId}`,
+    actor: platformAdmin
+      ? notificationPerson(platformAdmin)
+      : { id: platformAdminId, name: "Cadence", email: "" },
+    recipients: buyer ? [notificationPerson(buyer)] : [],
+    data: {
+      title: `Your Refund Request for ${course?.title ?? "your course"} was ${decision}`,
+      summary: note ? `Note from Cadence: “${note}”` : undefined,
+      // Where the buyer sees their Refund Request: a Team Licence's on the
+      // team page, an Individual Purchase's in Settings.
+      url:
+        kindOf(getSeats(db, purchase.id)) === "team_licence"
+          ? "/team"
+          : "/settings",
+      actionLabel: "Review Refund Request",
+      decision,
+      note,
+    },
+  };
 }
 
 /** The email the buyer gets once their Refund Request is decided. */
