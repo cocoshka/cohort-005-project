@@ -35,7 +35,7 @@ export function playChime(): void {
 
 /** Plays the chime when the Inbox's unread count goes up live. */
 export function NotificationSound({ soundOn }: { soundOn: boolean }) {
-  const { unreadCount, loading } = useInbox();
+  const { unreadCount, loading, markedUnread } = useInbox();
   const gate = useRef(createChimeGate());
 
   useEffect(() => {
@@ -45,9 +45,10 @@ export function NotificationSound({ soundOn }: { soundOn: boolean }) {
       at: Date.now(),
       visible: document.visibilityState === "visible",
       soundOn,
+      markedUnread: markedUnread(),
     });
     if (play) playChime();
-  }, [unreadCount, loading, soundOn]);
+  }, [unreadCount, loading, soundOn, markedUnread]);
 
   return null;
 }

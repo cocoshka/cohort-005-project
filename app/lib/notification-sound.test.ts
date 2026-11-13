@@ -14,6 +14,7 @@ function seen(
     loading: false,
     visible: true,
     soundOn: true,
+    markedUnread: 0,
     ...overrides,
   };
 }
@@ -53,6 +54,26 @@ describe("the Notification sound", () => {
 
     gate.observe(seen(4, 60 * SECOND, { loading: true }));
     expect(gate.observe(seen(6, 61 * SECOND))).toBe(false);
+  });
+
+  it("doesn't play when the person marks a Notification as unread themselves", () => {
+    const gate = createChimeGate();
+    gate.observe(seen(2, 0));
+    expect(gate.observe(seen(3, 60 * SECOND, { markedUnread: 1 }))).toBe(false);
+  });
+
+  it("doesn't play when the mark as unread is noticed before the count goes up", () => {
+    const gate = createChimeGate();
+    gate.observe(seen(2, 0));
+    gate.observe(seen(2, 60 * SECOND, { markedUnread: 1 }));
+    expect(gate.observe(seen(3, 60 * SECOND, { markedUnread: 1 }))).toBe(false);
+  });
+
+  it("still plays for a live Notification after a mark as unread", () => {
+    const gate = createChimeGate();
+    gate.observe(seen(2, 0));
+    gate.observe(seen(3, 60 * SECOND, { markedUnread: 1 }));
+    expect(gate.observe(seen(4, 120 * SECOND, { markedUnread: 1 }))).toBe(true);
   });
 
   it("never plays in a hidden tab", () => {
