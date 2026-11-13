@@ -7,7 +7,7 @@ import { courses, purchases } from "~/db/schema";
 import { eq } from "drizzle-orm";
 import { parseFormData, parseParams } from "~/lib/validation";
 import { raiseRefundRequest } from "~/lib/refunds.server";
-import { sendEmail } from "~/lib/mailer.server";
+import { sendEachEmail, sendEmail } from "~/lib/mailer.server";
 import { notifyInBackground } from "~/lib/notifier.server";
 
 const refundParamsSchema = z.object({
@@ -74,11 +74,12 @@ export async function action({ params, request }: Route.ActionArgs) {
   }
 
   notifyInBackground(result.notification);
-  await Promise.all(
-    [result.email, ...result.platformAdminEmails].map((email) =>
-      sendEmail(email)
-    )
-  );
+  // A Platform Admin's email failing is logged, never the buyer's problem:
+  // their Refund Request is already saved. The buyer's receipt is sent as
+  // before.
+  const platformAdminEmails = sendEachEmail(result.platformAdminEmails);
+  await sendEmail(result.email);
+  await platformAdminEmails;
 
   return redirect(result.kind === "team_licence" ? "/team" : "/settings");
 }
