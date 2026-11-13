@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Knock from "@knocklabs/node";
 import { db as appDb, type Db } from "~/db";
+import type { users } from "~/db/schema";
 import type { NotificationKind } from "~/lib/notification-kind";
 import { idsWithNotificationsOff } from "~/lib/preferences.server";
 
@@ -13,15 +14,16 @@ import { idsWithNotificationsOff } from "~/lib/preferences.server";
 // KNOCK_API_KEY is set. Without a key (tests, local dev without Knock) a fake
 // is used instead.
 
+/** Someone in a Notification: the person who acted, or one it's for. */
 export type NotificationPerson = {
   id: number;
   name: string;
   email: string;
 };
 
-/** Picks what Knock needs from a Cadence user row. */
+/** Strips a Cadence user row down to what a Notification carries. */
 export function notificationPerson(
-  user: NotificationPerson
+  user: typeof users.$inferSelect
 ): NotificationPerson {
   return { id: user.id, name: user.name, email: user.email };
 }
@@ -49,7 +51,8 @@ export type Notification = {
   data: NotificationData;
 };
 
-export type KnockRecipient = { id: string; name: string; email: string };
+/** A NotificationPerson as Knock takes them: Knock user ids are strings. */
+export type KnockRecipient = Omit<NotificationPerson, "id"> & { id: string };
 
 export type NotifierTrigger = {
   workflow: NotificationKind;
@@ -80,7 +83,7 @@ export function recordingNotifier(): RecordingNotifier {
  * Fake for local dev without a Knock key: each trigger is written to
  * `.notifications/` as a JSON file, like emails go to `.outbox/`.
  */
-export function outboxNotifier(directory: string): Notifier {
+export function fileOutboxNotifier(directory: string): Notifier {
   return {
     async trigger(trigger) {
       mkdirSync(directory, { recursive: true });
@@ -115,7 +118,7 @@ export function defaultNotifier(): Notifier {
     const apiKey = process.env.KNOCK_API_KEY;
     sharedNotifier = apiKey
       ? knockNotifier(apiKey)
-      : outboxNotifier(".notifications");
+      : fileOutboxNotifier(".notifications");
   }
   return sharedNotifier;
 }

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   deliverNotification,
-  outboxNotifier,
+  fileOutboxNotifier,
   recordingNotifier,
   type Notification,
   type Notifier,
@@ -153,11 +153,11 @@ describe("deliverNotification", () => {
   });
 });
 
-describe("outboxNotifier", () => {
+describe("fileOutboxNotifier", () => {
   it("writes each trigger to a folder when there is no Knock key", async () => {
     const directory = mkdtempSync(join(tmpdir(), "notifications-"));
 
-    await deliverNotification(seatClaimed(), outboxNotifier(directory));
+    await deliverNotification(seatClaimed(), fileOutboxNotifier(directory));
 
     const files = readdirSync(directory);
     expect(files).toHaveLength(1);
