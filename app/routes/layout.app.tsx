@@ -8,6 +8,7 @@ import { getCountryTierInfo, COUNTRIES } from "~/lib/ppp";
 import { getKnockClientConfig } from "~/lib/knock-token.server";
 import { getUserPreferences } from "~/lib/preferences.server";
 import { InboxProvider } from "~/components/inbox/inbox-provider";
+import { NotificationSound } from "~/components/inbox/notification-sound";
 import { eq, and, or, sql, desc } from "drizzle-orm";
 import { db } from "~/db";
 import {
@@ -240,6 +241,12 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
 
   return (
     <InboxProvider userId={currentUser?.id ?? null} config={inbox}>
+      {currentUser && (
+        <NotificationSound
+          key={currentUser.id}
+          soundOn={currentUser.preferences.playNotificationSound}
+        />
+      )}
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           currentUser={currentUser}

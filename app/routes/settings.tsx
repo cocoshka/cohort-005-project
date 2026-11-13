@@ -13,6 +13,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
 import { UserRole, RefundStatus, users } from "~/db/schema";
 import { AlertTriangle, Bell } from "lucide-react";
+import { playChime } from "~/components/inbox/notification-sound";
 import { data, isRouteErrorResponse, Link } from "react-router";
 import { db } from "~/db";
 import { eq } from "drizzle-orm";
@@ -32,6 +33,10 @@ const settingsSchema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("notifications"),
     notificationsEnabled: z.enum(["on", "off"]),
+  }),
+  z.object({
+    intent: z.literal("sound"),
+    playNotificationSound: z.enum(["on", "off"]),
   }),
 ]);
 
@@ -103,6 +108,12 @@ export async function action({ request }: Route.ActionArgs) {
     const notificationsEnabled = parsed.data.notificationsEnabled === "on";
     saveUserPreferences(db, currentUser.id, { notificationsEnabled });
     return { success: true, notificationsEnabled };
+  }
+
+  if (parsed.data.intent === "sound") {
+    const playNotificationSound = parsed.data.playNotificationSound === "on";
+    saveUserPreferences(db, currentUser.id, { playNotificationSound });
+    return { success: true, playNotificationSound };
   }
 
   const { name, bio } = parsed.data;
@@ -210,6 +221,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
 
       <NotificationsCard
         notificationsEnabled={preferences.notificationsEnabled}
+        playNotificationSound={preferences.playNotificationSound}
       />
 
       {refundRequests.length > 0 && (
@@ -265,8 +277,10 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
 
 function NotificationsCard({
   notificationsEnabled,
+  playNotificationSound,
 }: {
   notificationsEnabled: boolean;
+  playNotificationSound: boolean;
 }) {
   const fetcher = useFetcher<typeof action>();
   const pending = fetcher.formData?.get("notificationsEnabled");
@@ -316,8 +330,65 @@ function NotificationsCard({
             }
           />
         </div>
+        {/* Stays usable when Inbox notifications are off: it keeps its own
+            value either way. */}
+        <SoundSwitch playNotificationSound={playNotificationSound} />
       </CardContent>
     </Card>
+  );
+}
+
+function SoundSwitch({
+  playNotificationSound,
+}: {
+  playNotificationSound: boolean;
+}) {
+  const fetcher = useFetcher<typeof action>();
+  const pending = fetcher.formData?.get("playNotificationSound");
+  const checked =
+    typeof pending === "string" ? pending === "on" : playNotificationSound;
+
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if ("playNotificationSound" in fetcher.data) {
+      toast.success(
+        fetcher.data.playNotificationSound
+          ? "Notification sound turned on."
+          : "Notification sound turned off."
+      );
+    } else if ("errors" in fetcher.data) {
+      toast.error("Couldn't save your sound setting.");
+    }
+  }, [fetcher.state, fetcher.data]);
+
+  return (
+    <div className="mt-6 flex items-start justify-between gap-4">
+      <div>
+        <Label htmlFor="play-notification-sound">
+          Play a sound for new Notifications
+        </Label>
+        <p className="mt-1 text-xs text-muted-foreground">
+          A short chime while Cadence is open in a visible tab.
+        </p>
+        <button
+          type="button"
+          onClick={playChime}
+          className="mt-2 text-xs font-medium text-primary hover:underline"
+        >
+          Play a test sound
+        </button>
+      </div>
+      <Switch
+        id="play-notification-sound"
+        checked={checked}
+        onCheckedChange={(on) =>
+          fetcher.submit(
+            { intent: "sound", playNotificationSound: on ? "on" : "off" },
+            { method: "post" }
+          )
+        }
+      />
+    </div>
   );
 }
 

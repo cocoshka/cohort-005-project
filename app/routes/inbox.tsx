@@ -1,7 +1,15 @@
 import { useState } from "react";
-import { Link, data } from "react-router";
-import { ArrowRight, Inbox as InboxIcon, Mail, MailOpen } from "lucide-react";
+import { Link, data, useRouteLoaderData } from "react-router";
+import {
+  ArrowRight,
+  Inbox as InboxIcon,
+  Mail,
+  MailOpen,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import type { Route } from "./+types/inbox";
+import type { loader as layoutLoader } from "./layout.app";
 import { getCurrentUserId } from "~/lib/session";
 import {
   groupInbox,
@@ -92,11 +100,12 @@ export default function InboxPage() {
             </button>
           ))}
         </div>
+        <SoundStatus />
         <button
           type="button"
           onClick={() => void feedClient?.markAllAsRead()}
           disabled={unreadCount === 0}
-          className="ml-auto text-sm font-medium text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+          className="text-sm font-medium text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
         >
           Mark all as read
         </button>
@@ -289,5 +298,22 @@ function ReadingPane({
         {item.actionLabel} <ArrowRight className="size-4" />
       </Link>
     </article>
+  );
+}
+
+/** The sound switch's state, linking to it on Settings. Not a toggle. */
+function SoundStatus() {
+  const layout = useRouteLoaderData<typeof layoutLoader>("routes/layout.app");
+  const soundOn =
+    layout?.currentUser?.preferences.playNotificationSound ?? true;
+  const Icon = soundOn ? Volume2 : VolumeX;
+  return (
+    <Link
+      to="/settings#notifications"
+      className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:underline"
+    >
+      <Icon className="size-3.5" />
+      {soundOn ? "Sound on" : "Sound off"} · Change in Settings
+    </Link>
   );
 }
