@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { userPreferences } from "~/db/schema";
-import type { Db } from "~/lib/refunds.server";
+import type { Db } from "~/db";
 
 // ─── Preferences ───
 // One row per person, created the first time they save. A missing row means

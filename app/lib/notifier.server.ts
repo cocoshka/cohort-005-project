@@ -1,9 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Knock from "@knocklabs/node";
-import { db as appDb } from "~/db";
+import { db as appDb, type Db } from "~/db";
 import { idsWithNotificationsOff } from "~/lib/preferences.server";
-import type { Db } from "~/lib/refunds.server";
 
 // ─── Notifications ───
 // Knock stores and delivers the in-app feed (ADR 0013). Every kind goes
