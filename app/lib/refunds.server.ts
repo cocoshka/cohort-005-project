@@ -15,6 +15,7 @@ import {
   videoWatchEvents,
   LessonProgressStatus,
   RefundStatus,
+  UserRole,
 } from "~/db/schema";
 import { formatPrice } from "~/lib/utils";
 import { notificationPerson, type Notification } from "~/lib/notifier.server";
@@ -352,8 +353,20 @@ export function getRefundOffer(
 export type Email = { to: string; subject: string; body: string };
 
 export type RaiseResult =
-  | { ok: true; refundRequestId: number; kind: PurchaseKind; email: Email }
+  | {
+      ok: true;
+      refundRequestId: number;
+      kind: PurchaseKind;
+      /** The buyer's "Refund requested" receipt. */
+      email: Email;
+      /** A New Refund Request email for every Platform Admin but the buyer. */
+      platformAdminEmails: Email[];
+      /** New Refund Request for every Platform Admin's Inbox. */
+      notification: Notification;
+    }
   | Failure;
+
+const REVIEW_OPEN_REFUND_REQUESTS_URL = "/admin/refunds?status=open";
 
 export function raiseRefundRequest(
   db: Db,
@@ -388,10 +401,48 @@ export function raiseRefundRequest(
     .returning()
     .get();
 
+  const platformAdmins = db
+    .select()
+    .from(users)
+    .where(eq(users.role, UserRole.Admin))
+    .orderBy(asc(users.id))
+    .all();
+  const title = `${buyer.name} asked for a refund on ${course.title}`;
+
   return {
     ok: true,
     refundRequestId: refundRequest.id,
     kind: kindOf(getSeats(db, purchase.id)),
+    platformAdminEmails: platformAdmins
+      .filter((platformAdmin) => platformAdmin.id !== buyer.id)
+      .map((platformAdmin) => ({
+        to: platformAdmin.email,
+        subject: `New Refund Request — ${course.title}`,
+        body: [
+          `Hi ${platformAdmin.name},`,
+          "",
+          `${buyer.name} asked for a refund on "${course.title}" (${formatPrice(purchase.amountPaid)}).`,
+          "",
+          "Their reason:",
+          reason,
+          "",
+          `Review it in Cadence at ${REVIEW_OPEN_REFUND_REQUESTS_URL}.`,
+          "",
+          "— The Cadence team",
+        ].join("\n"),
+      })),
+    notification: {
+      workflow: "new-refund-request",
+      idempotencyKey: `new-refund-request:${refundRequest.id}`,
+      actor: notificationPerson(buyer),
+      recipients: platformAdmins.map(notificationPerson),
+      data: {
+        title,
+        summary: reason,
+        url: REVIEW_OPEN_REFUND_REQUESTS_URL,
+        actionLabel: "Review Refund Request",
+      },
+    },
     email: {
       to: buyer.email,
       subject: `Refund requested — ${course.title}`,

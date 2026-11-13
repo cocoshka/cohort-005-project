@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { and, eq } from "drizzle-orm";
 import { createTestDb, seedBaseData } from "~/test/setup";
 import * as schema from "~/db/schema";
@@ -15,6 +18,7 @@ import {
   raiseRefundRequest,
 } from "./refunds.server";
 import { deliverNotification, recordingNotifier } from "./notifier.server";
+import { outboxTransport, sendEmail } from "./mailer.server";
 
 type TestDb = ReturnType<typeof createTestDb>;
 
@@ -235,6 +239,121 @@ describe("raising a Refund Request", () => {
       ok: false,
       status: 403,
     });
+  });
+});
+
+describe("a New Refund Request", () => {
+  function addPlatformAdmin(name: string) {
+    return db
+      .insert(schema.users)
+      .values({
+        name,
+        email: `${name.toLowerCase()}@example.com`,
+        role: UserRole.Admin,
+      })
+      .returning()
+      .get();
+  }
+
+  function readOutbox(directory: string) {
+    return readdirSync(directory)
+      .map((file) => JSON.parse(readFileSync(join(directory, file), "utf8")))
+      .sort((a, b) => a.to.localeCompare(b.to));
+  }
+
+  it("reaches every Platform Admin's Inbox in one trigger, with the buyer as actor", async () => {
+    const secondAdmin = addPlatformAdmin("Sam");
+    const purchase = buyForSelf(base.user.id);
+    const notifier = recordingNotifier();
+
+    const result = raiseRefundRequest(
+      db,
+      purchase.id,
+      base.user.id,
+      "It was not what I expected.",
+      NOW
+    );
+    if (!result.ok) throw new Error(result.error);
+    await deliverNotification(result.notification, notifier);
+
+    expect(notifier.triggers).toEqual([
+      {
+        workflow: "new-refund-request",
+        idempotencyKey: `new-refund-request:${result.refundRequestId}`,
+        actor: {
+          id: String(base.user.id),
+          name: "Test User",
+          email: "test@example.com",
+        },
+        recipients: [
+          {
+            id: String(platformAdmin.id),
+            name: "Pat Admin",
+            email: "pat@example.com",
+          },
+          {
+            id: String(secondAdmin.id),
+            name: "Sam",
+            email: "sam@example.com",
+          },
+        ],
+        data: {
+          title: "Test User asked for a refund on Test Course",
+          summary: "It was not what I expected.",
+          url: "/admin/refunds?status=open",
+          actionLabel: "Review Refund Request",
+        },
+      },
+    ]);
+  });
+
+  it("emails every Platform Admin and still sends the buyer their receipt", async () => {
+    addPlatformAdmin("Sam");
+    const purchase = buyForSelf(base.user.id);
+    const outbox = mkdtempSync(join(tmpdir(), "outbox-"));
+
+    const result = raiseRefundRequest(
+      db,
+      purchase.id,
+      base.user.id,
+      "It was not what I expected.",
+      NOW
+    );
+    if (!result.ok) throw new Error(result.error);
+    for (const email of [result.email, ...result.platformAdminEmails]) {
+      await sendEmail(email, outboxTransport(outbox));
+    }
+
+    const emails = readOutbox(outbox);
+    expect(emails.map((email) => [email.to, email.subject])).toEqual([
+      ["pat@example.com", "New Refund Request — Test Course"],
+      ["sam@example.com", "New Refund Request — Test Course"],
+      ["test@example.com", "Refund requested — Test Course"],
+    ]);
+    const toPat = emails[0];
+    expect(toPat.body).toContain("Test User asked for a refund on \"Test Course\"");
+    expect(toPat.body).toContain("It was not what I expected.");
+    expect(toPat.body).toContain("$79.00");
+    expect(toPat.body).toContain("/admin/refunds?status=open");
+    expect(toPat.body.toLowerCase()).not.toContain("unsubscribe");
+  });
+
+  it("never notifies the buyer about their own Refund Request", async () => {
+    const purchase = buyForSelf(platformAdmin.id);
+    const notifier = recordingNotifier();
+
+    const result = raiseRefundRequest(
+      db,
+      purchase.id,
+      platformAdmin.id,
+      "It was not what I expected.",
+      NOW
+    );
+    if (!result.ok) throw new Error(result.error);
+    await deliverNotification(result.notification, notifier);
+
+    expect(notifier.triggers).toEqual([]);
+    expect(result.platformAdminEmails).toEqual([]);
   });
 });
 
