@@ -10,18 +10,30 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
+import { Switch } from "~/components/ui/switch";
 import { UserRole, RefundStatus, users } from "~/db/schema";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Bell } from "lucide-react";
 import { data, isRouteErrorResponse, Link } from "react-router";
 import { db } from "~/db";
 import { eq } from "drizzle-orm";
 import { formatPrice } from "~/lib/utils";
 import { listRefundRequestsForBuyer } from "~/lib/refunds.server";
+import {
+  getUserPreferences,
+  saveUserPreferences,
+} from "~/lib/preferences.server";
 
-const settingsSchema = z.object({
-  name: z.string().trim().min(1, "Name cannot be empty."),
-  bio: z.string().trim().optional(),
-});
+const settingsSchema = z.discriminatedUnion("intent", [
+  z.object({
+    intent: z.literal("profile"),
+    name: z.string().trim().min(1, "Name cannot be empty."),
+    bio: z.string().trim().optional(),
+  }),
+  z.object({
+    intent: z.literal("notifications"),
+    notificationsEnabled: z.enum(["on", "off"]),
+  }),
+]);
 
 export function meta() {
   return [
@@ -60,6 +72,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       role: currentUser.role,
     },
     refundRequests,
+    preferences: getUserPreferences(db, currentUserId),
   };
 }
 
@@ -86,6 +99,12 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ errors: parsed.errors }, { status: 400 });
   }
 
+  if (parsed.data.intent === "notifications") {
+    const notificationsEnabled = parsed.data.notificationsEnabled === "on";
+    saveUserPreferences(db, currentUser.id, { notificationsEnabled });
+    return { success: true, notificationsEnabled };
+  }
+
   const { name, bio } = parsed.data;
 
   db
@@ -98,7 +117,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Settings({ loaderData }: Route.ComponentProps) {
-  const { user, refundRequests } = loaderData;
+  const { user, refundRequests, preferences } = loaderData;
   const openCount = refundRequests.filter(
     (refundRequest) => refundRequest.status === RefundStatus.Open
   ).length;
@@ -139,6 +158,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         </CardHeader>
         <CardContent>
           <fetcher.Form method="post" className="space-y-4">
+            <input type="hidden" name="intent" value="profile" />
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -188,6 +208,10 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         </CardContent>
       </Card>
 
+      <NotificationsCard
+        notificationsEnabled={preferences.notificationsEnabled}
+      />
+
       {refundRequests.length > 0 && (
         <Card className="mt-8 max-w-md">
           <CardHeader>
@@ -236,6 +260,64 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         </Card>
       )}
     </div>
+  );
+}
+
+function NotificationsCard({
+  notificationsEnabled,
+}: {
+  notificationsEnabled: boolean;
+}) {
+  const fetcher = useFetcher<typeof action>();
+  const pending = fetcher.formData?.get("notificationsEnabled");
+  const checked =
+    typeof pending === "string" ? pending === "on" : notificationsEnabled;
+
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if ("notificationsEnabled" in fetcher.data) {
+      toast.success(
+        fetcher.data.notificationsEnabled
+          ? "Inbox notifications turned on."
+          : "Inbox notifications turned off."
+      );
+    } else if ("errors" in fetcher.data) {
+      toast.error("Couldn't save your notification settings.");
+    }
+  }, [fetcher.state, fetcher.data]);
+
+  return (
+    <Card id="notifications" className="mt-8 max-w-md scroll-mt-6">
+      <CardHeader>
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <Bell className="size-4" /> Notifications
+        </h2>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label htmlFor="notifications-enabled">Inbox notifications</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              When this is off, nothing new reaches your Inbox. Refund emails
+              still arrive.
+            </p>
+          </div>
+          <Switch
+            id="notifications-enabled"
+            checked={checked}
+            onCheckedChange={(on) =>
+              fetcher.submit(
+                {
+                  intent: "notifications",
+                  notificationsEnabled: on ? "on" : "off",
+                },
+                { method: "post" }
+              )
+            }
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

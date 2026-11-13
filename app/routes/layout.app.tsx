@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { getCurrentUserId, getDevCountry } from "~/lib/session";
 import { getCountryTierInfo, COUNTRIES } from "~/lib/ppp";
 import { getKnockClientConfig } from "~/lib/knock-token.server";
+import { getUserPreferences } from "~/lib/preferences.server";
 import { InboxProvider } from "~/components/inbox/inbox-provider";
 import { eq, and, or, sql, desc } from "drizzle-orm";
 import { db } from "~/db";
@@ -212,6 +213,8 @@ export async function loader({ request }: Route.LoaderArgs) {
           name: currentUser.name,
           role: currentUser.role,
           avatarUrl: currentUser.avatarUrl ?? null,
+          // Inbox Notifications and the arrival sound (Settings > Notifications).
+          preferences: getUserPreferences(db, currentUser.id),
         }
       : null,
     recentCourses,

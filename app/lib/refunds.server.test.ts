@@ -14,6 +14,7 @@ import {
   listTeamLicences,
   raiseRefundRequest,
 } from "./refunds.server";
+import { saveUserPreferences } from "./preferences.server";
 
 type TestDb = ReturnType<typeof createTestDb>;
 
@@ -366,6 +367,17 @@ describe("approving a Refund Request", () => {
     expect(result.email.to).toBe("test@example.com");
     expect(result.email.subject).toBe("Refund approved — Test Course");
     expect(result.email.body).toContain("$79.00");
+  });
+
+  it("still emails a buyer who turned Inbox Notifications off", () => {
+    saveUserPreferences(db, base.user.id, { notificationsEnabled: false });
+    const purchase = buyForSelf(base.user.id);
+    const id = raise(purchase.id, base.user.id);
+
+    const result = approveRefundRequest(db, id, platformAdmin.id, null, NOW);
+
+    if (!result.ok) throw new Error(result.error);
+    expect(result.email.to).toBe("test@example.com");
   });
 });
 
