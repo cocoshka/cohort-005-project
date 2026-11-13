@@ -8,6 +8,7 @@ import {
 export default [
   index("routes/home.tsx"),
   layout("routes/layout.app.tsx", [
+    route("inbox", "routes/inbox.tsx"),
     route("dashboard", "routes/dashboard.tsx"),
     route("courses", "routes/courses.tsx"),
     route("courses/:slug", "routes/courses.$slug.tsx"),
@@ -52,6 +53,7 @@ export default [
   route("login", "routes/login.tsx"),
   route("api/switch-user", "routes/api.switch-user.ts"),
   route("api/logout", "routes/api.logout.ts"),
+  route("api/knock-token", "routes/api.knock-token.ts"),
   route("api/video-tracking", "routes/api.video-tracking.ts"),
   route("api/set-dev-country", "routes/api.set-dev-country.ts"),
 ] satisfies RouteConfig;

@@ -33,3 +33,6 @@ reports/
 
 # Emails written locally instead of sent
 .outbox/
+
+# Notifications written locally when there is no Knock key
+.notifications/
