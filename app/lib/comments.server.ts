@@ -145,9 +145,9 @@ function newQuestion(
   { author, lessonTitle, summary, url, commentId }: NotificationContext,
   instructor: Person | undefined
 ): Notification | null {
-  // Staff asking on a course isn't a question for its Instructor, matching
-  // the Questions page.
-  if (!instructor || author.role === UserRole.Admin) return null;
+  // Only Students ask questions. A Platform Admin or any Instructor (this
+  // course's or another's) commenting isn't a question for the Instructor.
+  if (!instructor || author.role !== UserRole.Student) return null;
 
   return {
     workflow: "new-question",
