@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { and, eq } from "drizzle-orm";
 import { createTestDb, seedBaseData } from "~/test/setup";
 import * as schema from "~/db/schema";
@@ -14,6 +17,8 @@ import {
   listTeamLicences,
   raiseRefundRequest,
 } from "./refunds.server";
+import { deliverNotification, recordingNotifier } from "./notifier.server";
+import { outboxTransport, sendEmail } from "./mailer.server";
 
 type TestDb = ReturnType<typeof createTestDb>;
 
@@ -234,6 +239,121 @@ describe("raising a Refund Request", () => {
       ok: false,
       status: 403,
     });
+  });
+});
+
+describe("a New Refund Request", () => {
+  function addPlatformAdmin(name: string) {
+    return db
+      .insert(schema.users)
+      .values({
+        name,
+        email: `${name.toLowerCase()}@example.com`,
+        role: UserRole.Admin,
+      })
+      .returning()
+      .get();
+  }
+
+  function readOutbox(directory: string) {
+    return readdirSync(directory)
+      .map((file) => JSON.parse(readFileSync(join(directory, file), "utf8")))
+      .sort((a, b) => a.to.localeCompare(b.to));
+  }
+
+  it("reaches every Platform Admin's Inbox in one trigger, with the buyer as actor", async () => {
+    const secondAdmin = addPlatformAdmin("Sam");
+    const purchase = buyForSelf(base.user.id);
+    const notifier = recordingNotifier();
+
+    const result = raiseRefundRequest(
+      db,
+      purchase.id,
+      base.user.id,
+      "It was not what I expected.",
+      NOW
+    );
+    if (!result.ok) throw new Error(result.error);
+    await deliverNotification(result.notification, notifier);
+
+    expect(notifier.triggers).toEqual([
+      {
+        workflow: "new-refund-request",
+        idempotencyKey: `new-refund-request:${result.refundRequestId}`,
+        actor: {
+          id: String(base.user.id),
+          name: "Test User",
+          email: "test@example.com",
+        },
+        recipients: [
+          {
+            id: String(platformAdmin.id),
+            name: "Pat Admin",
+            email: "pat@example.com",
+          },
+          {
+            id: String(secondAdmin.id),
+            name: "Sam",
+            email: "sam@example.com",
+          },
+        ],
+        data: {
+          title: "Test User asked for a refund on Test Course",
+          summary: "It was not what I expected.",
+          url: "/admin/refunds?status=open",
+          actionLabel: "Review Refund Request",
+        },
+      },
+    ]);
+  });
+
+  it("emails every Platform Admin and still sends the buyer their receipt", async () => {
+    addPlatformAdmin("Sam");
+    const purchase = buyForSelf(base.user.id);
+    const outbox = mkdtempSync(join(tmpdir(), "outbox-"));
+
+    const result = raiseRefundRequest(
+      db,
+      purchase.id,
+      base.user.id,
+      "It was not what I expected.",
+      NOW
+    );
+    if (!result.ok) throw new Error(result.error);
+    for (const email of [result.email, ...result.platformAdminEmails]) {
+      await sendEmail(email, outboxTransport(outbox));
+    }
+
+    const emails = readOutbox(outbox);
+    expect(emails.map((email) => [email.to, email.subject])).toEqual([
+      ["pat@example.com", "New Refund Request — Test Course"],
+      ["sam@example.com", "New Refund Request — Test Course"],
+      ["test@example.com", "Refund requested — Test Course"],
+    ]);
+    const toPat = emails[0];
+    expect(toPat.body).toContain("Test User asked for a refund on \"Test Course\"");
+    expect(toPat.body).toContain("It was not what I expected.");
+    expect(toPat.body).toContain("$79.00");
+    expect(toPat.body).toContain("/admin/refunds?status=open");
+    expect(toPat.body.toLowerCase()).not.toContain("unsubscribe");
+  });
+
+  it("never notifies the buyer about their own Refund Request", async () => {
+    const purchase = buyForSelf(platformAdmin.id);
+    const notifier = recordingNotifier();
+
+    const result = raiseRefundRequest(
+      db,
+      purchase.id,
+      platformAdmin.id,
+      "It was not what I expected.",
+      NOW
+    );
+    if (!result.ok) throw new Error(result.error);
+    await deliverNotification(result.notification, notifier);
+
+    expect(notifier.triggers).toEqual([]);
+    expect(result.platformAdminEmails).toEqual([]);
   });
 });
 
@@ -500,5 +620,133 @@ describe("listing Refund Requests", () => {
       { seatCount: 2, claimedSeatCount: 1, canRequestRefund: false },
       { seatCount: 2, claimedSeatCount: 0, canRequestRefund: true },
     ]);
+  });
+});
+
+describe("telling the buyer their Refund Request was decided", () => {
+  it("tells a Student their Refund Request was approved, with the note", async () => {
+    const purchase = buyForSelf(base.user.id);
+    const id = raise(purchase.id, base.user.id);
+    const notifier = recordingNotifier();
+
+    const result = approveRefundRequest(
+      db,
+      id,
+      platformAdmin.id,
+      "Sorry it wasn't a fit.",
+      NOW
+    );
+    if (!result.ok) throw new Error(result.error);
+    await deliverNotification(result.notification, notifier);
+
+    expect(notifier.triggers).toEqual([
+      {
+        workflow: "refund-request-decided",
+        idempotencyKey: `refund-request-decided:${id}`,
+        actor: {
+          id: String(platformAdmin.id),
+          name: "Pat Admin",
+          email: "pat@example.com",
+        },
+        recipients: [
+          {
+            id: String(base.user.id),
+            name: "Test User",
+            email: "test@example.com",
+          },
+        ],
+        data: {
+          title: "Your Refund Request for Test Course was approved",
+          summary: "Note from Cadence: \u201cSorry it wasn't a fit.\u201d",
+          url: "/settings",
+          actionLabel: "Review Refund Request",
+          decision: "approved",
+          note: "Sorry it wasn't a fit.",
+        },
+      },
+    ]);
+  });
+
+  it("tells a Team Admin their Refund Request on a Team Licence was declined", async () => {
+    const priya = addLearner("Priya");
+    const { purchase } = buySeats(priya.id, 2);
+    const id = raise(purchase.id, priya.id);
+    const notifier = recordingNotifier();
+
+    const result = declineRefundRequest(
+      db,
+      id,
+      platformAdmin.id,
+      "  Seats are in use.  ",
+      NOW
+    );
+    if (!result.ok) throw new Error(result.error);
+    await deliverNotification(result.notification, notifier);
+
+    expect(notifier.triggers).toHaveLength(1);
+    expect(notifier.triggers[0]?.recipients).toEqual([
+      { id: String(priya.id), name: "Priya", email: "priya@example.com" },
+    ]);
+    expect(notifier.triggers[0]?.data).toEqual({
+      title: "Your Refund Request for Test Course was declined",
+      summary: "Note from Cadence: “Seats are in use.”",
+      url: "/team",
+      actionLabel: "Review Refund Request",
+      decision: "declined",
+      note: "Seats are in use.",
+    });
+  });
+
+  it("leaves the note out when the approval has none", async () => {
+    const purchase = buyForSelf(base.user.id);
+    const id = raise(purchase.id, base.user.id);
+    const notifier = recordingNotifier();
+
+    const result = approveRefundRequest(db, id, platformAdmin.id, null, NOW);
+    if (!result.ok) throw new Error(result.error);
+    await deliverNotification(result.notification, notifier);
+
+    expect(notifier.triggers[0]?.data).toEqual({
+      title: "Your Refund Request for Test Course was approved",
+      url: "/settings",
+      actionLabel: "Review Refund Request",
+      decision: "approved",
+      note: null,
+    });
+  });
+
+  it("does not notify a Platform Admin about deciding their own Refund Request", async () => {
+    const purchase = buyForSelf(platformAdmin.id);
+    const id = raise(purchase.id, platformAdmin.id);
+    const notifier = recordingNotifier();
+
+    const result = approveRefundRequest(db, id, platformAdmin.id, null, NOW);
+    if (!result.ok) throw new Error(result.error);
+    await deliverNotification(result.notification, notifier);
+
+    expect(notifier.triggers).toEqual([]);
+  });
+
+  it("keeps the decision when Knock keeps failing", async () => {
+    const purchase = buyForSelf(base.user.id);
+    const id = raise(purchase.id, base.user.id);
+    const errors: unknown[] = [];
+
+    const result = approveRefundRequest(db, id, platformAdmin.id, null, NOW);
+    if (!result.ok) throw new Error(result.error);
+    await deliverNotification(
+      result.notification,
+      {
+        async trigger() {
+          throw new Error("Knock is down");
+        },
+      },
+      { sleep: async () => {}, logError: (error) => errors.push(error) }
+    );
+
+    expect(errors).toHaveLength(1);
+    expect(
+      listRefundRequestsForBuyer(db, base.user.id).map((r) => r.status)
+    ).toEqual(["approved"]);
   });
 });
