@@ -1,4 +1,4 @@
-import { data } from "react-router";
+import { data, redirect } from "react-router";
 import { db } from "~/db";
 import { getCurrentUserId } from "~/lib/session";
 import { resolveCountry } from "~/lib/country.server";
@@ -9,7 +9,7 @@ import {
   type Viewer,
 } from "./lib/decide";
 
-const SIGNED_OUT_MESSAGE = "Select a user from the DevUI panel.";
+const SIGNED_OUT_MESSAGE = "You must be logged in.";
 
 const DEFAULT_REFUSALS: Record<CoursePermission, string> = {
   viewContent: "You must be enrolled in this course.",
@@ -42,7 +42,22 @@ export async function getCoursePermissions(
 }
 
 /**
- * Throws 401 when signed out, and 403 unless the viewer has `permission` on
+ * What a signed-out visitor gets. A page load (GET) is sent to login, which
+ * brings them back to this path and search afterwards. A form submission gets
+ * a 401, since it can't usefully be replayed after a redirect.
+ */
+function signedOut(request: Request) {
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const path = url.pathname + url.search;
+    return redirect(`/login?redirectTo=${encodeURIComponent(path)}`);
+  }
+  return data(SIGNED_OUT_MESSAGE, { status: 401 });
+}
+
+/**
+ * When signed out, redirects page loads to login and throws 401 for form
+ * submissions. Otherwise throws 403 unless the viewer has `permission` on
  * the course. Pass `message` to word the 403 yourself; otherwise a default
  * for that permission is used. Use in actions too: loader guards don't
  * protect actions.
@@ -56,7 +71,7 @@ export async function requireCoursePermission(
   const { viewer, permissions } = await getCoursePermissions(request, courseId);
 
   if (viewer.userId === null) {
-    throw data(SIGNED_OUT_MESSAGE, { status: 401 });
+    throw signedOut(request);
   }
 
   if (!permissions[permission]) {
