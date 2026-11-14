@@ -38,7 +38,7 @@ export const NO_PERMISSIONS: CoursePermissions = {
   purchasingPowerBlock: null,
 };
 
-// Purchase selection stays as it was in access.server.ts: the viewer's first
+// Purchase selection is unchanged from the old access module: the viewer's first
 // Purchase of the course, whatever kind it is.
 function findPurchase(db: Db, userId: number, courseId: number) {
   return db
