@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { eq } from "drizzle-orm";
 import { createTestDb, seedBaseData, type TestDb } from "~/test/setup";
 import * as schema from "~/db/schema";
 import { UserRole } from "~/db/schema";
@@ -78,6 +79,23 @@ const cases: Case[] = [
   {
     viewer: "owning Instructor",
     setup: () => ({ userId: instructorId, country: FULL_PRICE }),
+    expected: {
+      ...NONE,
+      viewContent: true,
+      moderateDiscussions: true,
+      manageCourse: true,
+    },
+  },
+  {
+    // Owning the course is the rule, whatever the owner's role is now.
+    viewer: "owner whose role is now Student",
+    setup: () => {
+      db.update(schema.users)
+        .set({ role: UserRole.Student })
+        .where(eq(schema.users.id, instructorId))
+        .run();
+      return { userId: instructorId, country: FULL_PRICE };
+    },
     expected: {
       ...NONE,
       viewContent: true,
