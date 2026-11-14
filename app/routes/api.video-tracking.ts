@@ -3,14 +3,25 @@ import { z } from "zod";
 import type { Route } from "./+types/api.video-tracking";
 import { getCurrentUserId } from "~/lib/session";
 import { parseJsonBody } from "~/lib/validation";
+import { requireCoursePermission } from "~/modules/course-permissions/guards.server";
 import { db } from "~/db";
-import { videoWatchEvents } from "~/db/schema";
+import { lessons, modules, videoWatchEvents } from "~/db/schema";
+import { eq } from "drizzle-orm";
 
 const videoTrackingSchema = z.object({
   lessonId: z.number(),
   eventType: z.string(),
   positionSeconds: z.number(),
 });
+
+function getCourseIdForLesson(lessonId: number) {
+  return db
+    .select({ courseId: modules.courseId })
+    .from(lessons)
+    .innerJoin(modules, eq(lessons.moduleId, modules.id))
+    .where(eq(lessons.id, lessonId))
+    .get()?.courseId;
+}
 
 export async function action({ request }: Route.ActionArgs) {
   const currentUserId = await getCurrentUserId(request);
@@ -25,6 +36,14 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const { lessonId, eventType, positionSeconds } = parsed.data;
+
+  // Watch events are progress, so they need the Record progress permission
+  // on the lesson's course.
+  const courseId = getCourseIdForLesson(lessonId);
+  if (courseId === undefined) {
+    throw data("Lesson not found", { status: 404 });
+  }
+  await requireCoursePermission(request, courseId, "recordProgress");
 
   db
     .insert(videoWatchEvents)

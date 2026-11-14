@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
 import type { Route } from "./+types/courses.$slug.lessons.$lessonId";
-import { requireUserId } from "~/lib/access.server";
 import { isEnrolled } from "~/lib/enrollments.server";
 import {
   getCoursePermissions,
@@ -962,15 +961,26 @@ export async function action({ params, request }: Route.ActionArgs) {
     return { ok: true };
   }
 
-  // Mark complete and submit quiz only need someone signed in, for now.
+  // Mark complete and submit quiz need the Record progress permission:
+  // enrolled and not blocked by the purchasing-power check.
   if (intent === "mark-complete") {
-    const currentUserId = await requireUserId(request);
+    const { userId: currentUserId } = await requireCoursePermission(
+      request,
+      course.id,
+      "recordProgress"
+    );
+    requireLessonInCourse(lessonId, course.id);
     markLessonComplete(currentUserId, lessonId);
     return { success: true };
   }
 
   if (intent === "submit-quiz") {
-    const currentUserId = await requireUserId(request);
+    const { userId: currentUserId } = await requireCoursePermission(
+      request,
+      course.id,
+      "recordProgress"
+    );
+    requireLessonInCourse(lessonId, course.id);
     const quizId = Number(formData.get("quizId"));
     if (isNaN(quizId)) {
       throw data("Invalid quiz ID", { status: 400 });
