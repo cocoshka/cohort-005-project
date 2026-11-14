@@ -14,7 +14,8 @@ Modules are deep modules: see [app/modules/README.md](./app/modules/README.md) b
 
 | Symptom                                         | Cause                                                                                                  |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 401 "Select a user from the DevUI panel"        | No user in the session — switch users and country in the floating panel (`app/components/dev-ui.tsx`). |
+| Redirect to `/login`, or 401 "You must be logged in." | No user in the session, on a route behind a Course Permissions guard: page loads redirect, form submissions get 401. Log in, or switch users in the floating panel (`app/components/dev-ui.tsx`). |
+| 401 "Select a user from the DevUI panel"        | No user in the session, on a route not yet on the guards — switch users and country in the floating panel (`app/components/dev-ui.tsx`). |
 | `tsc` reports every `./+types/*` import missing | Typegen has not run. Use `npm run typecheck`, which runs `react-router typegen` first.                 |
 
 ## Agent skills
