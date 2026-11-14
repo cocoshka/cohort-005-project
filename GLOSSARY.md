@@ -35,6 +35,12 @@ A Student who has lost their Enrollment on a course but still has progress on it
 Seconds of video a Student has actually played in a course: the furthest point reached in each lesson, added up. Not lessons opened.
 _Avoid_: Viewed, Progress
 
+### Course Permissions
+
+**Course Permission**:
+Something a person may do on one course: view its content, moderate its Discussions, manage it, record progress on it, or rate it. It follows from their role, whether they own the course, their Enrollment, and whether their Purchase plays in the country they're in now.
+_Avoid_: Access, Staff (for "who may moderate or manage")
+
 ### Discussions
 
 **Discussion Question**:
