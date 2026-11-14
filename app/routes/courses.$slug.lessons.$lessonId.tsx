@@ -985,6 +985,9 @@ export async function action({ params, request }: Route.ActionArgs) {
     if (isNaN(quizId)) {
       throw data("Invalid quiz ID", { status: 400 });
     }
+    if (getQuizByLessonId(lessonId)?.id !== quizId) {
+      throw data("Quiz not found in this lesson", { status: 404 });
+    }
 
     // Collect answers: form fields named "question-{questionId}" with value = optionId
     const selectedAnswers: Record<number, number> = {};

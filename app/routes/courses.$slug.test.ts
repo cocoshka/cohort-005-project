@@ -132,8 +132,9 @@ describe("rating a course", () => {
     const instructorId = base.instructor.id;
     buyAndEnroll(instructorId, FULL_PRICE);
 
-    expect(await refusal(rate(instructorId, FULL_PRICE, 5))).toMatchObject({
+    expect(await refusal(rate(instructorId, FULL_PRICE, 5))).toEqual({
       status: 403,
+      message: "You can't rate your own course.",
     });
     expect(await ratingSeenBy(instructorId, FULL_PRICE)).toBeNull();
   });

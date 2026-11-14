@@ -34,6 +34,7 @@ let courseSlug: string;
 let courseId: number;
 let lessonId: number;
 let quizId: number;
+let moduleId: number;
 
 function addStudent(name: string) {
   return db
@@ -136,6 +137,7 @@ beforeEach(() => {
     .values({ courseId, title: "Module 1", position: 1 })
     .returning()
     .get();
+  moduleId = mod.id;
   lessonId = db
     .insert(schema.lessons)
     .values({ moduleId: mod.id, title: "Lesson 1", position: 1 })
@@ -149,6 +151,24 @@ beforeEach(() => {
 });
 
 describe("Record progress gate", () => {
+  it("gives a signed-out watch event the guard's 401", async () => {
+    const request = new Request("http://test/api/video-tracking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId, eventType: "play", positionSeconds: 1 }),
+    });
+    await expect(
+      videoTrackingAction({
+        request,
+        params: {},
+        context: {},
+      } as Parameters<typeof videoTrackingAction>[0])
+    ).rejects.toMatchObject({
+      data: "You must be logged in.",
+      init: { status: 401 },
+    });
+  });
+
   describe.each(Object.entries(STUDENTS))("%s", (_name, makeStudent) => {
     it("gets a 403 for mark complete", async () => {
       const cookie = await makeStudent();
@@ -195,6 +215,28 @@ describe("Record progress gate", () => {
     it("can send watch events", async () => {
       const cookie = await enrolledStudent();
       expect(await postWatchEvent(cookie, lessonId)).toEqual({ success: true });
+    });
+
+    it("gets a 404 for a quiz that belongs to another lesson", async () => {
+      const cookie = await enrolledStudent();
+      const otherLessonId = db
+        .insert(schema.lessons)
+        .values({ moduleId: moduleId, title: "Lesson 2", position: 2 })
+        .returning()
+        .get().id;
+      const foreignQuizId = db
+        .insert(schema.quizzes)
+        .values({ lessonId: otherLessonId, title: "Quiz 2", passingScore: 0.7 })
+        .returning()
+        .get().id;
+      expect(
+        await statusOf(
+          postLessonIntent(cookie, {
+            intent: "submit-quiz",
+            quizId: String(foreignQuizId),
+          })
+        )
+      ).toBe(404);
     });
 
     it("gets a 404 for watch events on an unknown lesson", async () => {
