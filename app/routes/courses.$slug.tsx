@@ -6,6 +6,7 @@ import type { Route } from "./+types/courses.$slug";
 import { getCurrentUserId } from "~/lib/session";
 import { db } from "~/db";
 import { isEnrolled } from "~/lib/enrollments.server";
+import { requireCoursePermission } from "~/modules/course-permissions/guards.server";
 import {
   courses,
   categories,
@@ -45,10 +46,7 @@ import { data, isRouteErrorResponse } from "react-router";
 import { formatDuration, formatPrice } from "~/lib/utils";
 import { renderMarkdown } from "~/lib/markdown.server";
 import { resolveCountry } from "~/lib/country.server";
-import {
-  calculatePppPrice,
-  getCountryTierInfo,
-} from "~/lib/ppp";
+import { calculatePppPrice, getCountryTierInfo } from "~/lib/ppp";
 import { parseFormData } from "~/lib/validation";
 import { MAX_RATING, MIN_RATING } from "~/lib/ratings";
 import { StarRating, StarRatingInput } from "~/components/star-rating";
@@ -131,7 +129,6 @@ function getLessonCountForCourse(courseId: number) {
 
   return count?.count ?? 0;
 }
-
 
 function getCourseLessonIds(courseId: number): number[] {
   const courseModules = db
@@ -292,7 +289,10 @@ function findRating(userId: number, courseId: number) {
     .select()
     .from(courseRatings)
     .where(
-      and(eq(courseRatings.userId, userId), eq(courseRatings.courseId, courseId))
+      and(
+        eq(courseRatings.userId, userId),
+        eq(courseRatings.courseId, courseId)
+      )
     )
     .get();
 }
@@ -441,22 +441,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 // Enrollment is handled via the purchase confirmation page — this action only
 // records star ratings.
 export async function action({ params, request }: Route.ActionArgs) {
-  const currentUserId = await getCurrentUserId(request);
-
-  if (!currentUserId) {
-    throw data("You must be logged in to rate a course.", { status: 401 });
-  }
-
   const course = getCourseBySlug(params.slug);
   if (!course) {
     throw data("Course not found", { status: 404 });
   }
 
-  if (!isEnrolled(db, currentUserId, course.id)) {
-    throw data("You must be enrolled in this course to rate it.", {
-      status: 403,
-    });
-  }
+  const { userId: currentUserId } = await requireCoursePermission(
+    request,
+    course.id,
+    "rateCourse"
+  );
 
   const formData = await request.formData();
   const parsed = parseFormData(formData, ratingSchema);
