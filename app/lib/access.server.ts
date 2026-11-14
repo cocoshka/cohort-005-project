@@ -138,26 +138,6 @@ export async function requireUserId(request: Request): Promise<number> {
 }
 
 /**
- * Throws unless the user is the course's own instructor, or an admin.
- */
-export async function requireStaff(
-  request: Request,
-  courseId: number
-): Promise<Access> {
-  const access = await getAccess(request, courseId);
-
-  if (!access.userId) {
-    throw data("Select a user from the DevUI panel.", { status: 401 });
-  }
-
-  if (!access.isStaff) {
-    throw data("Only this course's instructor can do that.", { status: 403 });
-  }
-
-  return access;
-}
-
-/**
  * Throws unless the user is an instructor or an admin, without tying them to a
  * particular course — for pages that span all of someone's courses.
  */

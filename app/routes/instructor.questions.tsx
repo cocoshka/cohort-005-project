@@ -3,7 +3,8 @@ import { Link, data, isRouteErrorResponse, useFetcher } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod";
 import type { Route } from "./+types/instructor.questions";
-import { requireInstructorOrAdmin, requireStaff } from "~/lib/access.server";
+import { requireInstructorOrAdmin } from "~/lib/access.server";
+import { requireCoursePermission } from "~/modules/course-permissions/guards.server";
 import { renderComment } from "~/lib/comment-markdown.server";
 import { createComment } from "~/lib/comments.server";
 import { defaultNotifications } from "~/lib/notifications.server";
@@ -167,10 +168,11 @@ export async function action({ request }: Route.ActionArgs) {
 
   // Answering as the course's voice — so it must be the course's own
   // instructor, or an admin.
-  const { userId: authorId } = await requireStaff(request, course.courseId);
-  if (!authorId) {
-    throw data("Select a user from the DevUI panel.", { status: 401 });
-  }
+  const { userId: authorId } = await requireCoursePermission(
+    request,
+    course.courseId,
+    "manageCourse"
+  );
 
   const created = await createComment(
     db,
