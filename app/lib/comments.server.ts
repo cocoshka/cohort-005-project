@@ -204,12 +204,15 @@ export type DeleteCommentResult =
  * Discussion Reply Notification). A deleted Discussion Question keeps its
  * Discussion Replies readable, and their Notifications in place. A failure to
  * archive is logged and never fails the delete.
+ *
+ * Anyone may delete their own comment. `mayModerateDiscussions` (the Moderate
+ * discussions Course Permission) lets them delete anyone's.
  */
 export async function deleteComment(
   db: Db,
   commentId: number,
   userId: number,
-  isStaff: boolean,
+  mayModerateDiscussions: boolean,
   now: Date,
   notifications: Notifications
 ): Promise<DeleteCommentResult> {
@@ -217,7 +220,7 @@ export async function deleteComment(
   if (!existing) {
     return { ok: false, error: "Comment not found" };
   }
-  if (existing.userId !== userId && !isStaff) {
+  if (existing.userId !== userId && !mayModerateDiscussions) {
     return { ok: false, error: "You can only delete your own comments" };
   }
   if (existing.deletedAt !== null) {

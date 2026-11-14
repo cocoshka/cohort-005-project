@@ -2,8 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
 import type { Route } from "./+types/courses.$slug.lessons.$lessonId";
-import { getCurrentUserId } from "~/lib/session";
-import { getAccess, requireContentAccess } from "~/lib/access.server";
+import { requireUserId } from "~/lib/access.server";
+import { isEnrolled } from "~/lib/enrollments.server";
+import {
+  getCoursePermissions,
+  requireCoursePermission,
+} from "~/modules/course-permissions/guards.server";
 import { renderComment } from "~/lib/comment-markdown.server";
 import { markdown, type Markdown } from "~/lib/text";
 import {
@@ -669,9 +673,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Lesson not found in this course", { status: 404 });
   }
 
-  const access = await getAccess(request, course.id);
-  const currentUserId = access.userId;
-  const enrolled = access.enrolled;
+  const { viewer, permissions } = await getCoursePermissions(
+    request,
+    course.id
+  );
+  const currentUserId = viewer.userId;
+  const enrolled = currentUserId
+    ? isEnrolled(db, currentUserId, course.id)
+    : false;
   let lessonStatus: string | null = null;
   let lastWatchPosition = 0;
   let watchProgress = 0;
@@ -708,10 +717,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
-  // PPP Access Guard — resolved by getAccess, which treats a blocked user as
-  // having no access to the course's content at all.
-  const { pppBlocked, pppBlockedCountry, pppPurchaseCountry, canViewContent } =
-    access;
+  // A Student blocked by the purchasing-power check may not view the course's
+  // content at all, and is shown why instead.
+  const canViewContent = permissions.viewContent;
+  const block = permissions.purchasingPowerBlock;
+  const pppBlocked = block !== null;
+  const pppBlockedCountry = block?.currentCountry ?? null;
+  const pppPurchaseCountry = block?.purchaseCountry ?? null;
 
   // Comments are confidential to the course: only people who can read the
   // lesson can read the discussion on it.
@@ -823,7 +835,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     pppPurchaseCountry,
     comments,
     canViewContent,
-    canModerate: access.isStaff,
+    canModerate: permissions.moderateDiscussions,
     instructorName: instructor?.name ?? "your instructor",
     bookmarked,
     note: note ? { body: note.body, updatedAt: note.updatedAt } : null,
@@ -838,11 +850,6 @@ export async function action({ params, request }: Route.ActionArgs) {
     throw data("Course not found", { status: 404 });
   }
 
-  const currentUserId = await getCurrentUserId(request);
-  if (!currentUserId) {
-    throw data("You must be logged in", { status: 401 });
-  }
-
   const formData = await request.formData();
   const intent = formData.get("intent");
 
@@ -853,7 +860,8 @@ export async function action({ params, request }: Route.ActionArgs) {
     intent === "edit-comment" ||
     intent === "delete-comment"
   ) {
-    const access = await requireContentAccess(request, course.id);
+    const { userId: currentUserId, permissions } =
+      await requireCoursePermission(request, course.id, "viewContent");
 
     try {
       if (intent === "create-comment") {
@@ -908,7 +916,7 @@ export async function action({ params, request }: Route.ActionArgs) {
         db,
         parsed.data.commentId,
         currentUserId,
-        access.isStaff,
+        permissions.moderateDiscussions,
         new Date(),
         await defaultNotifications()
       );
@@ -927,7 +935,11 @@ export async function action({ params, request }: Route.ActionArgs) {
   // Bookmark and Note intents re-check access here, like the comment intents
   // above — loader guards don't protect actions.
   if (intent === "toggle-bookmark" || intent === "save-note") {
-    await requireContentAccess(request, course.id);
+    const { userId: currentUserId } = await requireCoursePermission(
+      request,
+      course.id,
+      "viewContent"
+    );
     requireLessonInCourse(lessonId, course.id);
 
     if (intent === "toggle-bookmark") {
@@ -950,12 +962,15 @@ export async function action({ params, request }: Route.ActionArgs) {
     return { ok: true };
   }
 
+  // Mark complete and submit quiz only need someone signed in, for now.
   if (intent === "mark-complete") {
+    const currentUserId = await requireUserId(request);
     markLessonComplete(currentUserId, lessonId);
     return { success: true };
   }
 
   if (intent === "submit-quiz") {
+    const currentUserId = await requireUserId(request);
     const quizId = Number(formData.get("quizId"));
     if (isNaN(quizId)) {
       throw data("Invalid quiz ID", { status: 400 });
