@@ -138,27 +138,6 @@ export async function requireUserId(request: Request): Promise<number> {
 }
 
 /**
- * Throws 401 when signed out, 403 when the user can't see the course's content.
- * Use in actions — loader guards don't protect actions.
- */
-export async function requireContentAccess(
-  request: Request,
-  courseId: number
-): Promise<Access> {
-  const access = await getAccess(request, courseId);
-
-  if (!access.userId) {
-    throw data("Select a user from the DevUI panel.", { status: 401 });
-  }
-
-  if (!access.canViewContent) {
-    throw data("You must be enrolled in this course.", { status: 403 });
-  }
-
-  return access;
-}
-
-/**
  * Throws unless the user is the course's own instructor, or an admin.
  */
 export async function requireStaff(
