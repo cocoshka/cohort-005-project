@@ -1,7 +1,6 @@
 import { data } from "react-router";
 import { z } from "zod";
 import type { Route } from "./+types/api.video-tracking";
-import { getCurrentUserId } from "~/lib/session";
 import { parseJsonBody } from "~/lib/validation";
 import { requireCoursePermission } from "~/modules/course-permissions/guards.server";
 import { db } from "~/db";
@@ -24,11 +23,6 @@ function getCourseIdForLesson(lessonId: number) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const currentUserId = await getCurrentUserId(request);
-  if (!currentUserId) {
-    throw data("Unauthorized", { status: 401 });
-  }
-
   const parsed = await parseJsonBody(request, videoTrackingSchema);
 
   if (!parsed.success) {
@@ -43,7 +37,11 @@ export async function action({ request }: Route.ActionArgs) {
   if (courseId === undefined) {
     throw data("Lesson not found", { status: 404 });
   }
-  await requireCoursePermission(request, courseId, "recordProgress");
+  const { userId: currentUserId } = await requireCoursePermission(
+    request,
+    courseId,
+    "recordProgress"
+  );
 
   db
     .insert(videoWatchEvents)

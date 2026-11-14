@@ -446,10 +446,12 @@ export async function action({ params, request }: Route.ActionArgs) {
     throw data("Course not found", { status: 404 });
   }
 
+  const isOwner = (await getCurrentUserId(request)) === course.instructorId;
   const { userId: currentUserId } = await requireCoursePermission(
     request,
     course.id,
-    "rateCourse"
+    "rateCourse",
+    isOwner ? "You can't rate your own course." : undefined
   );
 
   const formData = await request.formData();
@@ -1067,7 +1069,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       message =
         typeof error.data === "string"
           ? error.data
-          : "Please select a user from the DevUI panel.";
+          : "You must be logged in.";
     } else {
       title = `Error ${error.status}`;
       message = typeof error.data === "string" ? error.data : error.statusText;

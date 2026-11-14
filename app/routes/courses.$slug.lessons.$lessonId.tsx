@@ -719,10 +719,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // A Student blocked by the purchasing-power check may not view the course's
   // content at all, and is shown why instead.
   const canViewContent = permissions.viewContent;
-  const block = permissions.purchasingPowerBlock;
-  const pppBlocked = block !== null;
-  const pppBlockedCountry = block?.currentCountry ?? null;
-  const pppPurchaseCountry = block?.purchaseCountry ?? null;
 
   // Comments are confidential to the course: only people who can read the
   // lesson can read the discussion on it.
@@ -829,9 +825,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     lastWatchPosition,
     watchProgress,
     lessonProgressMap,
-    pppBlocked,
-    pppBlockedCountry,
-    pppPurchaseCountry,
+    purchasingPowerBlock: permissions.purchasingPowerBlock,
     comments,
     canViewContent,
     canModerate: permissions.moderateDiscussions,
@@ -961,8 +955,6 @@ export async function action({ params, request }: Route.ActionArgs) {
     return { ok: true };
   }
 
-  // Mark complete and submit quiz need the Record progress permission:
-  // enrolled and not blocked by the purchasing-power check.
   if (intent === "mark-complete") {
     const { userId: currentUserId } = await requireCoursePermission(
       request,
@@ -984,6 +976,9 @@ export async function action({ params, request }: Route.ActionArgs) {
     const quizId = Number(formData.get("quizId"));
     if (isNaN(quizId)) {
       throw data("Invalid quiz ID", { status: 400 });
+    }
+    if (getQuizByLessonId(lessonId)?.id !== quizId) {
+      throw data("Quiz not found in this lesson", { status: 404 });
     }
 
     // Collect answers: form fields named "question-{questionId}" with value = optionId
@@ -1054,9 +1049,7 @@ export default function LessonViewer({ loaderData }: Route.ComponentProps) {
     lastWatchPosition,
     watchProgress,
     lessonProgressMap,
-    pppBlocked,
-    pppBlockedCountry,
-    pppPurchaseCountry,
+    purchasingPowerBlock,
     comments,
     canViewContent,
     canModerate,
@@ -1088,15 +1081,15 @@ export default function LessonViewer({ loaderData }: Route.ComponentProps) {
   const quizResult = quizFetcher.data?.quizResult ?? null;
   const isSubmittingQuiz = quizFetcher.state !== "idle";
 
-  if (pppBlocked) {
-    const purchaseCountryName = pppPurchaseCountry
-      ? (COUNTRIES.find((c) => c.code === pppPurchaseCountry)?.name ??
-        pppPurchaseCountry)
-      : "your original country";
-    const currentCountryName = pppBlockedCountry
-      ? (COUNTRIES.find((c) => c.code === pppBlockedCountry)?.name ??
-        pppBlockedCountry)
-      : "a different country";
+  if (purchasingPowerBlock) {
+    const countryName = (code: string) =>
+      COUNTRIES.find((c) => c.code === code)?.name ?? code;
+    const purchaseCountryName = countryName(
+      purchasingPowerBlock.purchaseCountry
+    );
+    const currentCountryName = countryName(
+      purchasingPowerBlock.currentCountry
+    );
 
     return (
       <div className="flex min-h-[60vh] items-center justify-center p-6">

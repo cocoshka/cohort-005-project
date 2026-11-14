@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDb, seedBaseData, type TestDb } from "~/test/setup";
 import * as schema from "~/db/schema";
+import { addStudent, buyAndEnroll } from "~/test/students";
 import { setCurrentUserId, setDevCountry } from "~/lib/session";
 
 // The routes read the app's `db`. Point it at a fresh in-memory database for
@@ -34,25 +35,7 @@ let courseSlug: string;
 let courseId: number;
 let lessonId: number;
 let quizId: number;
-
-function addStudent(name: string) {
-  return db
-    .insert(schema.users)
-    .values({
-      name,
-      email: `${name.toLowerCase().replaceAll(" ", ".")}@example.com`,
-      role: schema.UserRole.Student,
-    })
-    .returning()
-    .get().id;
-}
-
-function enrollWithPurchase(userId: number, country: string) {
-  db.insert(schema.purchases)
-    .values({ userId, courseId, amountPaid: 2500, country })
-    .run();
-  db.insert(schema.enrollments).values({ userId, courseId }).run();
-}
+let moduleId: number;
 
 /** A session cookie for `userId`, browsing from `country`. */
 async function sessionCookie(userId: number, country: string) {
@@ -65,17 +48,17 @@ async function sessionCookie(userId: number, country: string) {
 
 const STUDENTS = {
   "Student with no Enrollment": async () =>
-    sessionCookie(addStudent("Nora None"), FULL_PRICE),
+    sessionCookie(addStudent(db, "Nora None"), FULL_PRICE),
   "Student blocked by the purchasing-power check": async () => {
-    const userId = addStudent("Bea Blocked");
-    enrollWithPurchase(userId, DISCOUNTED);
+    const userId = addStudent(db, "Bea Blocked");
+    buyAndEnroll(db, userId, courseId, DISCOUNTED);
     return sessionCookie(userId, FULL_PRICE);
   },
 };
 
 async function enrolledStudent() {
-  const userId = addStudent("Sam Student");
-  enrollWithPurchase(userId, DISCOUNTED);
+  const userId = addStudent(db, "Sam Student");
+  buyAndEnroll(db, userId, courseId, DISCOUNTED);
   return sessionCookie(userId, DISCOUNTED);
 }
 
@@ -136,6 +119,7 @@ beforeEach(() => {
     .values({ courseId, title: "Module 1", position: 1 })
     .returning()
     .get();
+  moduleId = mod.id;
   lessonId = db
     .insert(schema.lessons)
     .values({ moduleId: mod.id, title: "Lesson 1", position: 1 })
@@ -149,6 +133,24 @@ beforeEach(() => {
 });
 
 describe("Record progress gate", () => {
+  it("gives a signed-out watch event the guard's 401", async () => {
+    const request = new Request("http://test/api/video-tracking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId, eventType: "play", positionSeconds: 1 }),
+    });
+    await expect(
+      videoTrackingAction({
+        request,
+        params: {},
+        context: {},
+      } as Parameters<typeof videoTrackingAction>[0])
+    ).rejects.toMatchObject({
+      data: "You must be logged in.",
+      init: { status: 401 },
+    });
+  });
+
   describe.each(Object.entries(STUDENTS))("%s", (_name, makeStudent) => {
     it("gets a 403 for mark complete", async () => {
       const cookie = await makeStudent();
@@ -195,6 +197,28 @@ describe("Record progress gate", () => {
     it("can send watch events", async () => {
       const cookie = await enrolledStudent();
       expect(await postWatchEvent(cookie, lessonId)).toEqual({ success: true });
+    });
+
+    it("gets a 404 for a quiz that belongs to another lesson", async () => {
+      const cookie = await enrolledStudent();
+      const otherLessonId = db
+        .insert(schema.lessons)
+        .values({ moduleId: moduleId, title: "Lesson 2", position: 2 })
+        .returning()
+        .get().id;
+      const foreignQuizId = db
+        .insert(schema.quizzes)
+        .values({ lessonId: otherLessonId, title: "Quiz 2", passingScore: 0.7 })
+        .returning()
+        .get().id;
+      expect(
+        await statusOf(
+          postLessonIntent(cookie, {
+            intent: "submit-quiz",
+            quizId: String(foreignQuizId),
+          })
+        )
+      ).toBe(404);
     });
 
     it("gets a 404 for watch events on an unknown lesson", async () => {

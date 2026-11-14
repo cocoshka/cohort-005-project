@@ -166,8 +166,6 @@ export async function action({ request }: Route.ActionArgs) {
     throw data("Course not found", { status: 404 });
   }
 
-  // Answering as the course's voice — so it must be the course's own
-  // instructor, or an admin.
   const { userId: authorId } = await requireCoursePermission(
     request,
     course.courseId,
@@ -379,7 +377,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       message =
         typeof error.data === "string"
           ? error.data
-          : "Please select a user from the DevUI panel.";
+          : "You must be logged in.";
     } else if (error.status === 403) {
       title = "Not allowed";
       message =
