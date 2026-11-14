@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDb, seedBaseData, type TestDb } from "~/test/setup";
 import * as schema from "~/db/schema";
+import { addStudent, buyAndEnroll } from "~/test/students";
 import { setCurrentUserId } from "~/lib/session";
 
 // The route reads the app's `db`; point it at a fresh in-memory database.
@@ -28,27 +29,6 @@ beforeEach(() => {
   // Priced and PPP-enabled, so the purchasing-power check is in play.
   db.update(schema.courses).set({ price: 10000, pppEnabled: true }).run();
 });
-
-function addStudent(name: string) {
-  return db
-    .insert(schema.users)
-    .values({
-      name,
-      email: `${name.toLowerCase().replaceAll(" ", ".")}@example.com`,
-      role: schema.UserRole.Student,
-    })
-    .returning()
-    .get().id;
-}
-
-function buyAndEnroll(userId: number, country: string) {
-  db.insert(schema.purchases)
-    .values({ userId, courseId: base.course.id, amountPaid: 2500, country })
-    .run();
-  db.insert(schema.enrollments)
-    .values({ userId, courseId: base.course.id })
-    .run();
-}
 
 async function requestAs(
   userId: number,
@@ -107,8 +87,8 @@ async function refusal(promise: Promise<unknown>) {
 
 describe("rating a course", () => {
   it("lets an enrolled, unblocked Student rate it", async () => {
-    const studentId = addStudent("Sam Student");
-    buyAndEnroll(studentId, DISCOUNTED);
+    const studentId = addStudent(db, "Sam Student");
+    buyAndEnroll(db, studentId, base.course.id, DISCOUNTED);
 
     expect(await rate(studentId, DISCOUNTED, 4)).toEqual({
       ok: true,
@@ -118,8 +98,8 @@ describe("rating a course", () => {
   });
 
   it("refuses an enrolled Student blocked by the purchasing-power check", async () => {
-    const studentId = addStudent("Bea Blocked");
-    buyAndEnroll(studentId, DISCOUNTED);
+    const studentId = addStudent(db, "Bea Blocked");
+    buyAndEnroll(db, studentId, base.course.id, DISCOUNTED);
 
     expect(await refusal(rate(studentId, FULL_PRICE, 5))).toEqual({
       status: 403,
@@ -130,7 +110,7 @@ describe("rating a course", () => {
 
   it("refuses the owning Instructor, even when enrolled", async () => {
     const instructorId = base.instructor.id;
-    buyAndEnroll(instructorId, FULL_PRICE);
+    buyAndEnroll(db, instructorId, base.course.id, FULL_PRICE);
 
     expect(await refusal(rate(instructorId, FULL_PRICE, 5))).toEqual({
       status: 403,

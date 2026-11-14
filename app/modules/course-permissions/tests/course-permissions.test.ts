@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { createTestDb, seedBaseData, type TestDb } from "~/test/setup";
 import * as schema from "~/db/schema";
 import { UserRole } from "~/db/schema";
+import { enrollStudentInTransaction } from "~/lib/enrollments.server";
 import {
   decideCoursePermissions,
   type CoursePermissions,
@@ -40,7 +41,8 @@ function addUser(name: string, role = UserRole.Student) {
 }
 
 function enroll(userId: number) {
-  db.insert(schema.enrollments).values({ userId, courseId }).run();
+  const enrolled = enrollStudentInTransaction(db, userId, courseId, new Date());
+  if (!enrolled.ok) throw new Error(enrolled.error);
 }
 
 function purchase(userId: number, country: string) {

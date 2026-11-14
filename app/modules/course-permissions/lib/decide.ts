@@ -63,13 +63,13 @@ export function decideCoursePermissions(
   if (!course) return NO_PERMISSIONS;
 
   const isOwner = course.instructorId === userId;
-  const speaksForCourse = isOwner || user.role === UserRole.Admin;
+  const isOwnerOrPlatformAdmin = isOwner || user.role === UserRole.Admin;
   const enrolled = isEnrolled(db, userId, courseId);
 
   // The purchasing-power check only applies to enrolled Students. The owning
   // Instructor and Platform Admins are exempt.
   let block: PurchasingPowerBlock | null = null;
-  if (enrolled && !speaksForCourse) {
+  if (enrolled && !isOwnerOrPlatformAdmin) {
     const ppp = checkPppAccess(
       course.price,
       course.pppEnabled,
@@ -87,9 +87,9 @@ export function decideCoursePermissions(
   const studying = enrolled && block === null;
 
   return {
-    viewContent: speaksForCourse || studying,
-    moderateDiscussions: speaksForCourse,
-    manageCourse: speaksForCourse,
+    viewContent: isOwnerOrPlatformAdmin || studying,
+    moderateDiscussions: isOwnerOrPlatformAdmin,
+    manageCourse: isOwnerOrPlatformAdmin,
     recordProgress: studying,
     rateCourse: studying && !isOwner,
     purchasingPowerBlock: block,

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDb, seedBaseData, type TestDb } from "~/test/setup";
 import * as schema from "~/db/schema";
+import { addStudent, buyAndEnroll } from "~/test/students";
 import { setCurrentUserId, setDevCountry } from "~/lib/session";
 
 // The routes read the app's `db`. Point it at a fresh in-memory database for
@@ -36,25 +37,6 @@ let lessonId: number;
 let quizId: number;
 let moduleId: number;
 
-function addStudent(name: string) {
-  return db
-    .insert(schema.users)
-    .values({
-      name,
-      email: `${name.toLowerCase().replaceAll(" ", ".")}@example.com`,
-      role: schema.UserRole.Student,
-    })
-    .returning()
-    .get().id;
-}
-
-function enrollWithPurchase(userId: number, country: string) {
-  db.insert(schema.purchases)
-    .values({ userId, courseId, amountPaid: 2500, country })
-    .run();
-  db.insert(schema.enrollments).values({ userId, courseId }).run();
-}
-
 /** A session cookie for `userId`, browsing from `country`. */
 async function sessionCookie(userId: number, country: string) {
   const first = await setCurrentUserId(new Request("http://test/"), userId);
@@ -66,17 +48,17 @@ async function sessionCookie(userId: number, country: string) {
 
 const STUDENTS = {
   "Student with no Enrollment": async () =>
-    sessionCookie(addStudent("Nora None"), FULL_PRICE),
+    sessionCookie(addStudent(db, "Nora None"), FULL_PRICE),
   "Student blocked by the purchasing-power check": async () => {
-    const userId = addStudent("Bea Blocked");
-    enrollWithPurchase(userId, DISCOUNTED);
+    const userId = addStudent(db, "Bea Blocked");
+    buyAndEnroll(db, userId, courseId, DISCOUNTED);
     return sessionCookie(userId, FULL_PRICE);
   },
 };
 
 async function enrolledStudent() {
-  const userId = addStudent("Sam Student");
-  enrollWithPurchase(userId, DISCOUNTED);
+  const userId = addStudent(db, "Sam Student");
+  buyAndEnroll(db, userId, courseId, DISCOUNTED);
   return sessionCookie(userId, DISCOUNTED);
 }
 
