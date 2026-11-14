@@ -3,7 +3,7 @@ import { Link, data, isRouteErrorResponse, useFetcher } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod";
 import type { Route } from "./+types/instructor.questions";
-import { requireInstructorOrAdmin } from "~/lib/access.server";
+import { requireInstructorOrAdmin } from "~/lib/viewer.server";
 import { requireCoursePermission } from "~/modules/course-permissions/guards.server";
 import { renderComment } from "~/lib/comment-markdown.server";
 import { createComment } from "~/lib/comments.server";
