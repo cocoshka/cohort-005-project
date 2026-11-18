@@ -71,7 +71,7 @@ function NoteStatus({
   updatedAt: string | undefined;
 }) {
   if (error) return <span className="text-xs text-destructive">{error}</span>;
-  if (unsaved && updatedAt) {
+  if (unsaved) {
     return (
       <span className="text-xs text-muted-foreground">Unsaved changes</span>
     );
