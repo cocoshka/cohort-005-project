@@ -3,6 +3,7 @@ import { ArrowRight, Check, Sparkles } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { CourseImage } from "~/components/course-image";
 import { CourseMeta } from "~/components/landing/course-meta";
+import { cn } from "~/lib/utils";
 import type {
   LandingAction,
   LandingCourse,
@@ -27,7 +28,12 @@ export function LandingHero({
         aria-hidden
         className="pointer-events-none absolute -top-32 right-[-10rem] size-[36rem] rounded-full bg-primary/5 blur-3xl"
       />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-16 px-6 py-20 lg:grid-cols-[1.15fr_1fr] lg:py-28">
+      <div
+        className={cn(
+          "relative mx-auto grid max-w-6xl items-center gap-16 px-6 py-20 lg:py-28",
+          spotlight && "lg:grid-cols-[1.15fr_1fr]"
+        )}
+      >
         <div>
           <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground">
             <Sparkles className="size-3.5 text-primary" />
