@@ -12,7 +12,7 @@ import {
 
 export type Db = BetterSQLite3Database<typeof schema>;
 
-export const FEATURED_COURSE_LIMIT = 3;
+const FEATURED_COURSE_LIMIT = 3;
 
 export type LandingCourse = {
   id: number;
@@ -80,7 +80,7 @@ function countCategories(db: Db) {
   return total;
 }
 
-export function secondaryActionFor(signedIn: boolean): LandingAction {
+function secondaryActionFor(signedIn: boolean): LandingAction {
   return signedIn
     ? { label: "Go to Dashboard", to: "/dashboard" }
     : { label: "Create a free account", to: "/signup" };
