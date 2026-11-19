@@ -1,7 +1,8 @@
 import { Link } from "react-router";
-import { ArrowRight, BookOpen, Check, Sparkles, User } from "lucide-react";
+import { ArrowRight, Check, Sparkles } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { CourseImage } from "~/components/course-image";
+import { CourseMeta } from "~/components/landing/course-meta";
 import type {
   LandingAction,
   LandingCourse,
@@ -102,14 +103,7 @@ function SpotlightCard({ course }: { course: LandingCourse }) {
             {course.description}
           </p>
           <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <User className="size-3" />
-              {course.instructorName}
-            </span>
-            <span className="flex items-center gap-1">
-              <BookOpen className="size-3" />
-              {course.lessonCount} lessons
-            </span>
+            <CourseMeta course={course} />
           </div>
         </div>
       </Link>

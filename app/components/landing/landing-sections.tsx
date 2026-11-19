@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, BookOpen, GraduationCap, Users, User } from "lucide-react";
+import { ArrowRight, BookOpen, GraduationCap, Users } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -9,6 +9,7 @@ import {
   CardHeader,
 } from "~/components/ui/card";
 import { CourseImage } from "~/components/course-image";
+import { CourseMeta } from "~/components/landing/course-meta";
 import type { LandingCourse } from "~/modules/landing-page/index.server";
 
 export function LandingHighlights({
@@ -112,14 +113,7 @@ function FeaturedCourseCard({ course }: { course: LandingCourse }) {
           </p>
         </CardContent>
         <CardFooter className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <User className="size-3" />
-            {course.instructorName}
-          </span>
-          <span className="flex items-center gap-1">
-            <BookOpen className="size-3" />
-            {course.lessonCount} lessons
-          </span>
+          <CourseMeta course={course} />
         </CardFooter>
       </Card>
     </Link>
