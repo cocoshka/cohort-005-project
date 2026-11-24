@@ -1,5 +1,3 @@
-// Bodies arrive pre-rendered from the server (renderComment), because comments
-// are untrusted markdown and the sanitising renderer is server-only.
 export type RenderedComment = {
   id: number;
   /** Raw markdown — only used to populate the edit box. */
