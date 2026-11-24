@@ -4,6 +4,7 @@ import { cn } from "~/lib/utils";
 import { UserRole } from "~/db/schema";
 import { UserAvatar } from "~/components/user-avatar";
 import { NotificationBell } from "~/components/notification-feed";
+import { FestiveToggle } from "~/components/festive-toggle";
 import {
   Bookmark,
   BookOpen,
@@ -236,6 +237,7 @@ export function Sidebar({
           {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
           {isDark ? "Light Mode" : "Dark Mode"}
         </button>
+        <FestiveToggle variant="sidebar" />
 
         {currentUser && (
           <div className="flex items-center gap-3 rounded-md px-3 py-2">
