@@ -1,6 +1,5 @@
-// The season rule as source text, so the inline script in the page head and
-// the typed function below run the very same code. It sees two variables:
-// `stored`, the device's saved choice, and `now`, a Date.
+// The body of a function of `stored`, the device's saved choice, and `now`,
+// a Date.
 export const IS_FESTIVE_BODY = `
   if (stored === "on") return true;
   if (stored === "off") return false;

@@ -17,10 +17,7 @@ export function festiveChoice(turnOn: boolean): "on" | "off" {
   return turnOn ? "on" : "off";
 }
 
-/**
- * A script for the page head that adds the festive class before first
- * paint, so the theme does not flash in after hydration.
- */
+/** The page-head script that adds the festive class before first paint. */
 export const festiveThemeScript = `
 (function() {
   try {
