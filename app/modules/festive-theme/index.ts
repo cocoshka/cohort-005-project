@@ -1,4 +1,4 @@
-import { IS_FESTIVE_BODY, isFestive } from "./lib/season";
+import { IS_FESTIVE_BODY } from "./lib/season";
 
 export const FESTIVE_STORAGE_KEY = "cadence-festive";
 export const FESTIVE_CLASS = "festive";
@@ -8,9 +8,11 @@ export const FESTIVE_CLASS = "festive";
  * `stored` is the device's saved choice: "on", "off", or anything else
  * for "follow the season" (1 December to 6 January).
  */
-export function isFestiveThemeOn(stored: string | null, now: Date): boolean {
-  return isFestive(stored, now);
-}
+export const isFestiveThemeOn = new Function(
+  "stored",
+  "now",
+  IS_FESTIVE_BODY
+) as (stored: string | null, now: Date) => boolean;
 
 /** The value to save when the person flips the switch. */
 export function festiveChoice(turnOn: boolean): "on" | "off" {

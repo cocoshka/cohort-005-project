@@ -7,8 +7,3 @@ export const IS_FESTIVE_BODY = `
   var day = now.getDate();
   return month === 11 || (month === 0 && day <= 6);
 `;
-
-export const isFestive = new Function("stored", "now", IS_FESTIVE_BODY) as (
-  stored: string | null,
-  now: Date
-) => boolean;
