@@ -1,9 +1,10 @@
 import { NavLink, Form } from "react-router";
-import { useState, useEffect } from "react";
 import { cn } from "~/lib/utils";
 import { UserRole } from "~/db/schema";
 import { UserAvatar } from "~/components/user-avatar";
 import { NotificationBell } from "~/components/notification-feed";
+import { FestiveToggle } from "~/components/festive-toggle";
+import { useDarkMode } from "~/components/use-root-class-toggle";
 import {
   Bookmark,
   BookOpen,
@@ -127,20 +128,7 @@ export function Sidebar({
   isTeamAdmin = false,
 }: SidebarProps) {
   const currentUserRole = currentUser?.role ?? null;
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  function toggleDarkMode() {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("cadence-theme", next ? "dark" : "light");
-    } catch {}
-  }
+  const { isOn: isDark, toggle: toggleDarkMode } = useDarkMode();
 
   return (
     <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
@@ -236,6 +224,7 @@ export function Sidebar({
           {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
           {isDark ? "Light Mode" : "Dark Mode"}
         </button>
+        <FestiveToggle variant="sidebar" />
 
         {currentUser && (
           <div className="flex items-center gap-3 rounded-md px-3 py-2">

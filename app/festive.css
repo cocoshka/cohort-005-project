@@ -1,0 +1,101 @@
+/* Christmas theme: on when <html> has .festive. See docs/adr/0014. */
+
+:root.festive:not(.dark) {
+  --background: oklch(0.99 0.006 85);
+  --card: oklch(1 0 0);
+  --popover: oklch(1 0 0);
+  --primary: oklch(0.42 0.1 155);
+  --primary-foreground: oklch(0.99 0.006 85);
+  --secondary: oklch(0.95 0.03 155);
+  --secondary-foreground: oklch(0.3 0.08 155);
+  --muted: oklch(0.96 0.015 85);
+  --accent: oklch(0.94 0.05 85);
+  --accent-foreground: oklch(0.32 0.07 60);
+  --border: oklch(0.9 0.025 150);
+  --input: oklch(0.9 0.025 150);
+  --ring: oklch(0.75 0.14 85);
+  --sidebar: oklch(0.96 0.025 155);
+  --sidebar-primary: oklch(0.42 0.1 155);
+  --sidebar-accent: oklch(0.92 0.04 155);
+  --sidebar-accent-foreground: oklch(0.3 0.08 155);
+  --sidebar-border: oklch(0.88 0.035 155);
+  --sidebar-ring: oklch(0.75 0.14 85);
+}
+
+:root.festive.dark {
+  --background: oklch(0.19 0.035 255);
+  --card: oklch(0.24 0.04 255);
+  --popover: oklch(0.24 0.04 255);
+  --primary: oklch(0.84 0.13 85);
+  --primary-foreground: oklch(0.22 0.04 255);
+  --secondary: oklch(0.3 0.045 255);
+  --muted: oklch(0.3 0.045 255);
+  --muted-foreground: oklch(0.75 0.03 255);
+  --accent: oklch(0.32 0.05 255);
+  --border: oklch(1 0 0 / 12%);
+  --ring: oklch(0.84 0.13 85);
+  --sidebar: oklch(0.22 0.04 255);
+  --sidebar-primary: oklch(0.84 0.13 85);
+  --sidebar-primary-foreground: oklch(0.22 0.04 255);
+  --sidebar-accent: oklch(0.3 0.045 255);
+  --sidebar-border: oklch(1 0 0 / 12%);
+}
+
+/* A candy-cane stripe along the top of the page, above any page background. */
+:root.festive body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 40;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    oklch(0.55 0.2 25) 0 10px,
+    oklch(0.99 0 0) 10px 20px,
+    oklch(0.42 0.1 155) 20px 30px,
+    oklch(0.99 0 0) 30px 40px
+  );
+}
+
+.snowfall {
+  display: none;
+}
+
+:root.festive .snowfall {
+  display: block;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.snowflake {
+  position: absolute;
+  top: -12px;
+  border-radius: 9999px;
+  background: oklch(0.97 0.01 240);
+  box-shadow: 0 0 2px oklch(0.6 0.03 240 / 60%);
+  opacity: 0.85;
+  animation-name: snowfall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes snowfall {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(24px, 105vh, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root.festive .snowfall {
+    display: none;
+  }
+}

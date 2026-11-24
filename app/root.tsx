@@ -10,6 +10,9 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import "./festive.css";
+import { festiveThemeScript } from "~/modules/festive-theme";
+import { Snowfall } from "~/components/snowfall";
 
 const darkModeScript = `
 (function() {
@@ -44,6 +47,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         {/* oxlint-disable-next-line react/no-danger -- a constant script, not user input */}
         <script dangerouslySetInnerHTML={{ __html: darkModeScript }} />
+        {/* oxlint-disable-next-line react/no-danger -- a constant script, not user input */}
+        <script dangerouslySetInnerHTML={{ __html: festiveThemeScript }} />
         <Meta />
         <Links />
       </head>
@@ -74,6 +79,7 @@ export default function App() {
   return (
     <>
       <NavigationLoadingBar />
+      <Snowfall />
       <Outlet />
     </>
   );
