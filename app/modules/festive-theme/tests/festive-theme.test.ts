@@ -93,7 +93,10 @@ describe("festiveThemeScript", () => {
 
 describe("names shared with the stylesheet and saved devices", () => {
   it("styles the class the script adds", () => {
-    const css = readFileSync("app/festive.css", "utf8");
+    const css = readFileSync(
+      new URL("../../../festive.css", import.meta.url),
+      "utf8"
+    );
     expect(FESTIVE_CLASS).not.toBe("");
     expect(css).toContain(`:root.${FESTIVE_CLASS}:not(.dark)`);
     expect(css).toContain(`:root.${FESTIVE_CLASS}.dark`);
