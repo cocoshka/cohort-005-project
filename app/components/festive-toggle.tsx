@@ -27,7 +27,6 @@ function useFestiveTheme() {
 
 export function FestiveToggle({ variant }: { variant: "sidebar" | "icon" }) {
   const { isFestive, toggle } = useFestiveTheme();
-  const label = isFestive ? "Plain Theme" : "Christmas Theme";
 
   if (variant === "icon") {
     return (
@@ -35,11 +34,8 @@ export function FestiveToggle({ variant }: { variant: "sidebar" | "icon" }) {
         type="button"
         onClick={toggle}
         aria-pressed={isFestive}
-        title={
-          isFestive
-            ? "Switch to the plain theme"
-            : "Switch to the Christmas theme"
-        }
+        aria-label="Christmas theme"
+        title="Christmas theme"
         className="rounded-md p-2 text-muted-foreground transition-colors hover:text-foreground aria-pressed:text-primary"
       >
         <Snowflake className="size-4" />
@@ -55,7 +51,7 @@ export function FestiveToggle({ variant }: { variant: "sidebar" | "icon" }) {
       className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
     >
       <Snowflake className="size-4" />
-      {label}
+      Christmas Theme
     </button>
   );
 }
