@@ -41,8 +41,16 @@
   --sidebar-border: oklch(1 0 0 / 12%);
 }
 
-/* A candy-cane stripe along the top of the page. */
-:root.festive body {
+/* A candy-cane stripe along the top of the page, above any page background. */
+:root.festive body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 40;
+  pointer-events: none;
   background-image: repeating-linear-gradient(
     -45deg,
     oklch(0.55 0.2 25) 0 10px,
@@ -50,8 +58,6 @@
     oklch(0.42 0.1 155) 20px 30px,
     oklch(0.99 0 0) 30px 40px
   );
-  background-size: 100% 4px;
-  background-repeat: no-repeat;
 }
 
 .snowfall {
