@@ -1,32 +1,17 @@
-import { useEffect, useState } from "react";
 import { Snowflake } from "lucide-react";
 import {
   FESTIVE_CLASS,
   FESTIVE_STORAGE_KEY,
   festiveChoice,
 } from "~/modules/festive-theme";
-
-function useFestiveTheme() {
-  const [isFestive, setIsFestive] = useState(false);
-
-  useEffect(() => {
-    setIsFestive(document.documentElement.classList.contains(FESTIVE_CLASS));
-  }, []);
-
-  function toggle() {
-    const next = !isFestive;
-    setIsFestive(next);
-    document.documentElement.classList.toggle(FESTIVE_CLASS, next);
-    try {
-      localStorage.setItem(FESTIVE_STORAGE_KEY, festiveChoice(next));
-    } catch {}
-  }
-
-  return { isFestive, toggle };
-}
+import { useRootClassToggle } from "~/components/use-root-class-toggle";
 
 export function FestiveToggle({ variant }: { variant: "sidebar" | "icon" }) {
-  const { isFestive, toggle } = useFestiveTheme();
+  const { isOn: isFestive, toggle } = useRootClassToggle(
+    FESTIVE_CLASS,
+    FESTIVE_STORAGE_KEY,
+    festiveChoice
+  );
 
   if (variant === "icon") {
     return (

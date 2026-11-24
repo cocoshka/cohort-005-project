@@ -1,5 +1,4 @@
 import { Link } from "react-router";
-import { useState, useEffect } from "react";
 import type { Route } from "./+types/home";
 import { Button } from "~/components/ui/button";
 import {
@@ -21,6 +20,7 @@ import {
 import { CourseImage } from "~/components/course-image";
 import { DevUI } from "~/components/dev-ui";
 import { FestiveToggle } from "~/components/festive-toggle";
+import { useRootClassToggle } from "~/components/use-root-class-toggle";
 import { getCurrentUserId, getDevCountry } from "~/lib/session";
 import { getCountryTierInfo, COUNTRIES } from "~/lib/ppp";
 import { eq, like, and, or, sql } from "drizzle-orm";
@@ -174,20 +174,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     countryTierInfo,
     countries,
   } = loaderData;
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  function toggleDarkMode() {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("cadence-theme", next ? "dark" : "light");
-    } catch {}
-  }
+  const { isOn: isDark, toggle: toggleDarkMode } = useRootClassToggle(
+    "dark",
+    "cadence-theme",
+    (dark) => (dark ? "dark" : "light")
+  );
 
   return (
     <div className="min-h-screen bg-background">
