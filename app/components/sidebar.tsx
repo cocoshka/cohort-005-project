@@ -4,7 +4,7 @@ import { UserRole } from "~/db/schema";
 import { UserAvatar } from "~/components/user-avatar";
 import { NotificationBell } from "~/components/notification-feed";
 import { FestiveToggle } from "~/components/festive-toggle";
-import { useRootClassToggle } from "~/components/use-root-class-toggle";
+import { useDarkMode } from "~/components/use-root-class-toggle";
 import {
   Bookmark,
   BookOpen,
@@ -128,11 +128,7 @@ export function Sidebar({
   isTeamAdmin = false,
 }: SidebarProps) {
   const currentUserRole = currentUser?.role ?? null;
-  const { isOn: isDark, toggle: toggleDarkMode } = useRootClassToggle(
-    "dark",
-    "cadence-theme",
-    (dark) => (dark ? "dark" : "light")
-  );
+  const { isOn: isDark, toggle: toggleDarkMode } = useDarkMode();
 
   return (
     <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">

@@ -20,7 +20,7 @@ import {
 import { CourseImage } from "~/components/course-image";
 import { DevUI } from "~/components/dev-ui";
 import { FestiveToggle } from "~/components/festive-toggle";
-import { useRootClassToggle } from "~/components/use-root-class-toggle";
+import { useDarkMode } from "~/components/use-root-class-toggle";
 import { getCurrentUserId, getDevCountry } from "~/lib/session";
 import { getCountryTierInfo, COUNTRIES } from "~/lib/ppp";
 import { eq, like, and, or, sql } from "drizzle-orm";
@@ -174,11 +174,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     countryTierInfo,
     countries,
   } = loaderData;
-  const { isOn: isDark, toggle: toggleDarkMode } = useRootClassToggle(
-    "dark",
-    "cadence-theme",
-    (dark) => (dark ? "dark" : "light")
-  );
+  const { isOn: isDark, toggle: toggleDarkMode } = useDarkMode();
 
   return (
     <div className="min-h-screen bg-background">
